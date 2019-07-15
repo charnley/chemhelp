@@ -6,6 +6,7 @@ Module for chemical informatic tasks
 
 from io import StringIO
 import sys
+import gzip
 
 import numpy as np
 
@@ -57,6 +58,92 @@ def convert_atom(atom, t=None):
     else:
         atom = ATOM_LIST[atom -1].capitalize()
         return atom
+
+
+def read_sdffile(filename, remove_hs=False, sanitize=True):
+    """
+    """
+
+    ext = filename.split(".")[-1]
+
+    if ext == "sdf":
+
+        suppl = Chem.SDMolSupplier(filename,
+            removeHs=remove_hs,
+            sanitize=sanitize)
+
+    elif ext == "gz":
+
+        fobj = gzip.open(args.sdf)
+        suppl = Chem.ForwardSDMolSupplier(fobj,
+            removeHs=remove_hs,
+            sanitize=sanitize)
+
+    else:
+        print("could not read file")
+        quit()
+
+    return suppl
+
+
+def read_xyzfile(filename):
+
+
+    return
+
+
+def get_torsions(mol):
+    """ return idx of all torsion pairs
+    All heavy atoms, and one end can be a hydrogen
+    """
+
+    any_atom = "[*]"
+    not_hydrogen = "[!H]"
+
+    smarts = [
+        any_atom,
+        any_atom,
+        any_atom,
+        any_atom]
+
+    smarts = "~".join(smarts)
+
+    idxs = mol.GetSubstructMatches(Chem.MolFromSmarts(smarts))
+    idxs = [list(x) for x in idxs]
+    idxs = np.array(idxs)
+
+    rtnidxs = []
+
+    for idx in idxs:
+
+        atoms = get_torsion_atoms(mol, idx)
+        atoms = np.array(atoms)
+        idxh, = np.where(atoms == "H")
+
+        if idxh.shape[0] > 1: continue
+        elif idxh.shape[0] > 0:
+            if idxh[0] == 1: continue
+            if idxh[0] == 2: continue
+
+        rtnidxs.append(idx)
+
+    return np.array(rtnidxs, dtype=int)
+
+
+def get_torsion_atoms(mol, torsion):
+    """
+    return all atoms for specific torsion indexes
+
+    # TODO Not really need if you think it through
+
+    """
+
+    atoms = mol.GetAtoms()
+    atoms = [atom.GetSymbol() for atom in atoms]
+    atoms = np.array(atoms)
+    atoms = atoms[torsion]
+
+    return atoms
 
 
 def canonical(smiles):
@@ -251,11 +338,6 @@ def smiles_to_molobj(smilesstr, add_hydrogens=True):
     return mol, ""
 
 
-def set_conformer(molobj):
-
-    return
-
-
 def add_conformer(molobj, coordinates):
 
     conf = Chem.Conformer(len(coordinates))
@@ -266,6 +348,25 @@ def add_conformer(molobj, coordinates):
     molobj.AddConformer(conf, assignId=True)
 
     return
+
+
+def molobj_set_coordinates(conformer, coordinates):
+
+    for i, pos in enumerate(coordinates):
+        conformer.SetAtomPosition(i, pos)
+
+    return
+
+
+def save_molobj(molobj, coordinates=None):
+
+    if coordinates is not None:
+        conformer = molobj.GetConformer()
+        molobj_set_coordinates(conformer, coordinates)
+
+    sdf = molobj_to_sdfstr(molobj)
+
+    return sdf
 
 
 def set_coordinates(smiles, coordinates, idx_conf=0):
@@ -319,6 +420,7 @@ def set_coordinates(smiles, coordinates, idx_conf=0):
         conformer.SetAtomPosition(i, pos)
 
     return
+
 
 if __name__ == "__main__":
 
