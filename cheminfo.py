@@ -157,6 +157,15 @@ def canonical(smiles):
     return smiles
 
 
+def molobj_to_coordinates(molobj):
+
+    conformer = molobj.GetConformer()
+    coordinates = conformer.GetPositions()
+    coordinates = np.array(coordinates)
+
+    return coordinates
+
+
 def molobj_to_xyz(molobj, atom_type="int"):
     """
     rdkit molobj to xyz
@@ -171,9 +180,7 @@ def molobj_to_xyz(molobj, atom_type="int"):
         atoms = [atom.GetAtomicNum() for atom in atoms]
         atoms = np.array(atoms)
 
-    conformer = molobj.GetConformer()
-    coordinates = conformer.GetPositions()
-    coordinates = np.array(coordinates)
+    coordinates = molobj_to_coordinates(molobj)
 
     return atoms, coordinates
 
@@ -350,10 +357,29 @@ def add_conformer(molobj, coordinates):
     return
 
 
-def molobj_set_coordinates(conformer, coordinates):
+def molobj_get_coordinates(molobj):
+    """
+    """
+
+    conformer = molobj.GetConformer()
+    coordinates = conformer.GetPositions()
+    coordinates = np.array(coordinates)
+
+    return coordinates
+
+
+def conformer_set_coordinates(conformer, coordinates):
 
     for i, pos in enumerate(coordinates):
         conformer.SetAtomPosition(i, pos)
+
+    return
+
+
+def molobj_set_coordinates(molobj, coordinates):
+
+    conformer = molobj.GetConformer()
+    conformer_set_coordinates(conformer, coordinates)
 
     return
 
@@ -362,7 +388,7 @@ def save_molobj(molobj, coordinates=None):
 
     if coordinates is not None:
         conformer = molobj.GetConformer()
-        molobj_set_coordinates(conformer, coordinates)
+        conformer_set_coordinates(conformer, coordinates)
 
     sdf = molobj_to_sdfstr(molobj)
 
