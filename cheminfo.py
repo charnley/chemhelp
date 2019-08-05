@@ -74,7 +74,7 @@ def read_sdffile(filename, remove_hs=False, sanitize=True):
 
     elif ext == "gz":
 
-        fobj = gzip.open(args.sdf)
+        fobj = gzip.open(filename)
         suppl = Chem.ForwardSDMolSupplier(fobj,
             removeHs=remove_hs,
             sanitize=sanitize)
