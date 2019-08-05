@@ -350,10 +350,18 @@ def add_conformer(molobj, coordinates):
     return
 
 
-def molobj_set_coordinates(conformer, coordinates):
+def conformer_set_coordinates(conformer, coordinates):
 
     for i, pos in enumerate(coordinates):
         conformer.SetAtomPosition(i, pos)
+
+    return
+
+
+def molobj_set_coordinates(molobj, coordinates):
+
+    conformer = molobj.GetConformer()
+    conformer_set_coordinates(conformer, coordinates)
 
     return
 
@@ -362,7 +370,7 @@ def save_molobj(molobj, coordinates=None):
 
     if coordinates is not None:
         conformer = molobj.GetConformer()
-        molobj_set_coordinates(conformer, coordinates)
+        conformer_set_coordinates(conformer, coordinates)
 
     sdf = molobj_to_sdfstr(molobj)
 
