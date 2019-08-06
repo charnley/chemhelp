@@ -206,6 +206,8 @@ def molobj_to_sdfstr(mol):
 
     """
 
+    # Chem rdkit::MolToMolBlock ???!
+
     sio = StringIO()
     w = Chem.SDWriter(sio)
     w.write(mol)
@@ -357,13 +359,20 @@ def add_conformer(molobj, coordinates):
     return
 
 
+def molobj_copy(molobj):
+
+    molobj_prime = Chem.Mol(molobj)
+
+    return molobj_prime
+
+
 def molobj_get_coordinates(molobj):
     """
     """
 
     conformer = molobj.GetConformer()
     coordinates = conformer.GetPositions()
-    coordinates = np.array(coordinates)
+    coordinates = np.asarray(coordinates)
 
     return coordinates
 
