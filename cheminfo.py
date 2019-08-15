@@ -13,6 +13,8 @@ import numpy as np
 import rdkit.Chem as Chem
 import rdkit.Chem.AllChem as AllChem
 import rdkit.Chem.Draw as Draw
+import rdkit.Chem.ChemicalForceFields as ChemicalForceFields
+import rdkit.Chem.rdMolDescriptors as rdMolDescriptors
 
 # Chem.WrapLogs()
 
@@ -202,7 +204,7 @@ def molobj_optimize(molobj):
 def molobj_to_sdfstr(mol):
     """
 
-    .
+    there must be a easier way to do this
 
     """
 
@@ -393,7 +395,63 @@ def molobj_set_coordinates(molobj, coordinates):
     return
 
 
+def genereate_conformers(smilesstr, max_conf=20, min_conf=10):
+
+    molobj = smiles_to_molobj(smilesstr, add_hydrogens=True)
+
+    if molobj is None:
+        return None
+
+    status = AllChem.EmbedMolecule(molobj)
+    status = AllChem.UFFOptimizeMolecule(molobj)
+
+    rot_bond = rdMolDescriptors.CalcNumRotatableBonds(molobj)
+
+    confs = min(1 + 3*rot_bond, max_conf)
+    confs = max(confs, min_conf)
+
+    AllChem.EmbedMultipleConfs(molobj, numConfs=confs,
+                useExpTorsionAnglePrefs=True,
+                useBasicKnowledge=True)
+
+    return molobj
+
+
+def conformationalsearch(smiles):
+
+    molobj = genereate_conformers(smiles)
+
+    if molobj is None:
+        return None
+
+    conformers = molobj.GetConformers()
+
+    # status will be 0 for converged molecules
+    res = AllChem.MMFFOptimizeMoleculeConfs(molobj)
+    res = np.array(res)
+
+    status = res[:,0]
+    energies = res[:,1]
+    idx_converged, = np.where(status == 0)
+    energies = energies[idx_converged]
+
+    if energies.shape[0] == 0:
+        return None
+
+    idx_lowest = np.argsort(energies)[0]
+    coord = conformers[idx_lowest].GetPositions()
+
+    molobj.RemoveAllConformers()
+    add_conformer(molobj, coord)
+
+    return molobj
+
+
 def save_molobj(molobj, coordinates=None):
+    """
+    save sdf from specific coordinates
+    TODO Move to molobj_to_sdfstr, optional
+    """
 
     if coordinates is not None:
         conformer = molobj.GetConformer()
@@ -404,75 +462,20 @@ def save_molobj(molobj, coordinates=None):
     return sdf
 
 
-def set_coordinates(smiles, coordinates, idx_conf=0):
-    """
-
-    set coordinates of molobj
-
-    """
-
-    print(smiles)
-
-    m = Chem.MolFromSmiles('C1CCC1OC')
-    m = Chem.MolFromSmiles('COCC1OCC1C#C')
-    m = Chem.MolFromSmiles('OC12CC3OCC1CC23')
-    # m = Chem.MolFromSmiles(smiles)
-    m2=Chem.AddHs(m)
-    print(m2)
-    status = AllChem.EmbedMolecule(m2)
-    print(status)
-    status = AllChem.MMFFOptimizeMolecule(m2)
-    print(status)
-
-    conf = m2.GetConformer()
-
-
-    # AllChem.EmbedMolecule(molobj)
-    # AllChem.MMFFOptimizeMolecule(molobj)
-
-
-    # print(molobj)
-    #
-    # smi = molobj_to_smiles(molobj)
-    # print(smi)
-    # AllChem.EmbedMultipleConfs(molobj)
-
-    # cids = AllChem.EmbedMultipleConfs(molobj, numConfs=1)
-
-    # print(len(cids))
-
-    quit()
-    try:
-        conformer = molobj.GetConformer(idx_conf)
-
-    except ValueError:
-
-        conformer = cids[0]
-
-        # conformer = molobj.GetConformer()
-
-    for i, pos in enumerate(coordinates):
-        conformer.SetAtomPosition(i, pos)
-
-    return
-
-
 if __name__ == "__main__":
 
-    # f = open("weird.sdf", 'r')
-    # sdf = f.read()
-    # smiles, status = sdfstr_to_smiles(sdf)
-    # molobj, status = sdfstr_to_molobj(sdf)
-    # print(smiles)
-    # print(molobj)
-    # molobj = Chem.MolFromMolBlock(sdf)
-    # AllChem.UFFOptimizeMolecule(molobj)
-    # print(smiles)
-    #
-    # molobj, status = smiles_to_molobj(smiles)
-    # conf = molobj.GetConformer()
-    #
-    # print(conf)
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--sdf', action='store', help='', metavar='FILE')
+    parser.add_argument('--smi', action='store', help='', metavar='FILE')
+
+    args = parser.parse_args()
+
+    if args.smi is not None:
+        molobj = conformationalsearch(args.smi)
+        sdfstr = molobj_to_sdfstr(molobj)
+        print(sdfstr)
+
 
     pass
 
