@@ -6,6 +6,7 @@ import os
 here = os.path.dirname(__file__)
 sys.path.append(here + "/..")
 
+import json
 import subprocess
 import numpy as np
 import ase
@@ -181,6 +182,18 @@ def optimize_mopac(atoms, coord, filename="", method="PM7"):
     return coord
 
 
+def calculate(atoms, coord, filename="", method="PM7"):
+
+    calculator = Mopac(method=method, task="precise", label=filename)
+
+    molecule = ase.Atoms(atoms, coord)
+    molecule.set_calculator(calculator)
+
+    energy = molecule.get_potential_energy()
+
+    return
+
+
 def readlines_log(debug=False):
     """
     read stdin, if any.
@@ -282,6 +295,7 @@ def print_csv(data, sep=", "):
 
 
 def main():
+
     import sys
     import argparse
     parser = argparse.ArgumentParser()
@@ -291,7 +305,24 @@ def main():
     parser.add_argument('--stdsdf', action='store_true', help='')
     parser.add_argument('--atom', action='store_true', help='atomization')
 
+    parser.add_argument('--dryrun', action='store_true', help='only write input files')
+    parser.add_argument('--prefix', action='store', help='', metavar='STR', default="")
+
+    parser.add_argument('-p', '--parameters', help='Parameters for gaussian calculation')
+
     args = parser.parse_args()
+
+    if args.parameters is None:
+        parameters = {
+            "method": "PM7",
+            "keywords": "precise"
+        }
+
+    else:
+
+        with open(args.parameters, 'r') as f:
+            dumpstr = f.read()
+        parameters = json.loads(dumpstr)
 
 
     if args.sdf:
@@ -303,6 +334,10 @@ def main():
 
         atoms, coordinates = cheminfo.molobj_to_xyz(molobj)
         atoms_str = [cheminfo.convert_atom(atom) for atom in atoms]
+
+        #
+        filename = args.sdf.replace(".sdf", "")
+        calculate(atoms_str, coordinates, method=method, filename=filename + args.prefix)
 
         if args.atom:
             energies = get_atomization("PM6")

@@ -8,6 +8,7 @@ import os
 here = os.path.dirname(__file__)
 sys.path.append(here + "/..")
 
+import json
 from ase.calculators.gaussian import Gaussian as GaussianCalculator
 import cheminfo
 import misc
@@ -482,35 +483,43 @@ def main():
     parser.add_argument('--log', action='store', help='', metavar='FILE')
     parser.add_argument('--stdlog', action='store_true', help='')
     parser.add_argument('--stdsdf', action='store_true', help='')
-    parser.add_argument('--atom', action='store_true', help='atomization')
+    parser.add_argument('--atom', action='store_true', help='atomization correction')
+
+    parser.add_argument('--dryrun', action='store_true', help='only write input files')
+    parser.add_argument('--prefix', action='store', help='', metavar='STR', default="")
+
+    parser.add_argument('-p', '--parameters', help='Parameters for gaussian calculation')
+    parser.add_argument('-j', '--threads', help="Prepare multi-thread gaussian jobs", metavar="int", default=0)
 
     args = parser.parse_args()
 
+
+    if args.parameters is None:
+        parameters = {
+            "method": "B3LYP",
+            "basis": "6-31G(2df,p)",
+            "opt": "()",
+            "force": None }
+        s = json.dumps(parameters)
+        print(s)
+
+    else:
+        with open(args.parameters, 'r') as f:
+            dumpstr = f.read()
+        parameters = json.loads(dumpstr)
+
+
+    # if args.stdsdf:
+    #     for name, sdf in readlines_sdf():
     #
-    # # print(energies)
-    # # print(corr)
-    # #
-    # # quit()
-
-    parameters = {
-        "method": "B3LYP",
-        "basis": "6-31G(2df,p)",
-        "opt": "()",
-        "force": None
-    }
-
-
-    if args.stdsdf:
-        for name, sdf in readlines_sdf():
-
-            print(name)
-
-            molobj, status = cheminfo.sdfstr_to_molobj(sdf)
-
-            atoms, coordinates = cheminfo.molobj_to_xyz(molobj)
-            atoms_str = [cheminfo.convert_atom(atom) for atom in atoms]
-
-            properties = calculate(atoms, coordinates, parameters=parameters, label="jobs/"+name, n_threads=6, mem=14)
+    #         print(name)
+    #
+    #         molobj, status = cheminfo.sdfstr_to_molobj(sdf)
+    #
+    #         atoms, coordinates = cheminfo.molobj_to_xyz(molobj)
+    #         atoms_str = [cheminfo.convert_atom(atom) for atom in atoms]
+    #
+    #         properties = calculate(atoms, coordinates, parameters=parameters, label="jobs/"+name, n_threads=6, mem=14)
 
 
     if args.sdf:
@@ -518,22 +527,25 @@ def main():
         with open(args.sdf, 'r') as f:
             sdf = f.read()
 
+        filename = args.sdf
+        filename = filename.replace(".sdf", "")
+
         molobj, status = cheminfo.sdfstr_to_molobj(sdf)
 
         atoms, coordinates = cheminfo.molobj_to_xyz(molobj)
         atoms_str = [cheminfo.convert_atom(atom) for atom in atoms]
 
+        methodname = parameters["method"]
+        basis = parameters["basis"]
+
         if args.atom:
-            # energies = get_atomization("B3LYP", "6-31G(2df,p)")
-            energies = get_atomization("G4MP2", "")
-            # energies = get_atomization("PBE1PBE", "def2TZVP")
-            print(atoms_str)
+            energies = get_atomization(methodname, basis)
             corr = atomization(atoms_str, energies, 0.0)
             print("correction", corr)
 
 
         else:
-            # properties = calculate(atoms, coordinates, parameters=parameters)
+            properties = calculate(atoms, coordinates, parameters=parameters, write_only=True, label=filename+args.prefix, n_threads=30, mem=150)
             pass
 
         # e_atomi = calculate_energy_atomization(atoms_str, coordinates, atom_energies=energies, method="B3LYP", basis="6-31G(2df,p)")
