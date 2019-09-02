@@ -166,10 +166,7 @@ def molobj_to_coordinates(molobj):
     return coordinates
 
 
-def molobj_to_xyz(molobj, atom_type="int"):
-    """
-    rdkit molobj to xyz
-    """
+def molobj_to_atoms(molobj, atom_type="int"):
 
     atoms = molobj.GetAtoms()
 
@@ -179,6 +176,16 @@ def molobj_to_xyz(molobj, atom_type="int"):
     elif atom_type == "int":
         atoms = [atom.GetAtomicNum() for atom in atoms]
         atoms = np.array(atoms)
+
+    return atoms
+
+
+def molobj_to_xyz(molobj, atom_type="int"):
+    """
+    rdkit molobj to xyz
+    """
+
+    atoms = molobj_to_atoms(molobj, atom_type=atom_type)
 
     coordinates = molobj_to_coordinates(molobj)
 
