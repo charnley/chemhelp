@@ -15,6 +15,18 @@ from ase.calculators.mopac import MOPAC as Mopac
 import cheminfo
 import misc
 
+# NOTE
+# Should be possible to get graph of molecule using
+# keyword "local" on mopac
+# http://openmopac.net/manual/localize.html
+
+DEFAULT_PARAMETERS = {
+    "method": "PM6",
+    "keywords": "precise"
+
+}
+
+MOPCMD = "mopac {:}"
 
 def readlines_reverse(filename):
     with open(filename) as qfile:
@@ -32,6 +44,7 @@ def readlines_reverse(filename):
             position -= 1
         yield line[::-1]
 
+
 def read_line(filename, pattern):
 
     for i, line in enumerate(readlines_reverse(filename)):
@@ -41,7 +54,12 @@ def read_line(filename, pattern):
     return None
 
 
-def run_mopac(command):
+def run_mopac(filename, hide_print=True):
+
+    command = MOPCMD.format(filename)
+
+    if hide_print:
+        command += " 2> /dev/null"
 
     errorcode = subprocess.call(command, shell=True)
 
@@ -89,6 +107,9 @@ def read_coord_from_mopac_file(filename, find_energy=False):
 
 
 def read_properties(filename):
+    """
+    read properties from out file
+    """
 
     properties = {}
 
@@ -127,6 +148,24 @@ def read_properties(filename):
     properties["homo"] = homo
     properties["lumo"] = lumo
     properties["gap"] = lumo - homo
+
+
+    # coordinates
+    i = get_rev_index(lines, 'CARTESIAN COORDINATES')
+
+    j = i + 2
+    symbols = []
+    coord = []
+
+    while not lines[j].isspace():  # continue until we hit a blank line
+        l = lines[j].split()
+        symbols.append(l[1])
+        coord.append([float(c) for c in l[2: 2 + 3]])
+        j += 1
+
+    coord = np.array(coord)
+    properties["coord"] = coord
+    properties["atoms"] = symbols
 
     return properties
 
@@ -182,16 +221,39 @@ def optimize_mopac(atoms, coord, filename="", method="PM7"):
     return coord
 
 
-def calculate(atoms, coord, filename="", method="PM7"):
+def calculate(atoms, coord, parameters=DEFAULT_PARAMETERS, label=None, write_only=True, n_threads=1, clean=False):
 
-    calculator = Mopac(method=method, task="precise", label=filename)
+    # SET n_threads
+
+    if label is None:
+        label = "_tmp_mopac_"
+
+
+    method = parameters["method"]
+    keywords = parameters["keywords"]
+
+    calculator = Mopac(method=method, task=keywords, label=label)
 
     molecule = ase.Atoms(atoms, coord)
     molecule.set_calculator(calculator)
 
-    energy = molecule.get_potential_energy()
+    calculator.write_input(molecule)
 
-    return
+    if write_only:
+        return None
+
+
+    # TODO TODO TODO
+    run_mopac(label + ".mop")
+
+    # read log
+    properties = read_properties(label + ".out")
+
+    if clean:
+        pass
+        # TODO Remove label.mop label.out label.arc label.ase
+
+    return properties
 
 
 def readlines_log(debug=False):
@@ -314,7 +376,7 @@ def main():
 
     if args.parameters is None:
         parameters = {
-            "method": "PM7",
+            "method": "PM6",
             "keywords": "precise"
         }
 
@@ -389,5 +451,7 @@ def main():
 
     return
 
+
 if __name__ == '__main__':
     main()
+
