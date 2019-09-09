@@ -20,6 +20,10 @@ import misc
 # keyword "local" on mopac
 # http://openmopac.net/manual/localize.html
 
+# NOTE
+# There is an internal check for distances, but can be ignored with
+# "GEO-OK" keywords.
+
 DEFAULT_PARAMETERS = {
     "method": "PM6",
     "keywords": "precise"
