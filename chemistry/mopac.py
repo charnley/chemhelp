@@ -27,7 +27,6 @@ import misc
 DEFAULT_PARAMETERS = {
     "method": "PM6",
     "keywords": "precise"
-
 }
 
 MOPCMD = "mopac {:}"
