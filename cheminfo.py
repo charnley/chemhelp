@@ -216,6 +216,7 @@ def molobj_to_sdfstr(mol):
     """
 
     # Chem rdkit::MolToMolBlock ???!
+    # txt = Chem.MolToMolBlock(mol)
 
     sio = StringIO()
     w = Chem.SDWriter(sio)
