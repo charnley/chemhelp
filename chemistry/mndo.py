@@ -163,9 +163,9 @@ def get_properties(lines):
     coord = []
 
     # continue until we hit a blank line
-    while not lines[j].isspace():
+    while not lines[j].isspace() and lines[j].strip():
         l = lines[j].split()
-        symbols.append(l[idx_atm])
+        symbols.append(int(l[idx_atm]))
         x = l[idx_x]
         y = l[idx_y]
         z = l[idx_z]
@@ -193,6 +193,25 @@ def read_properties(filename):
 
     return properties
 
+
+def calculate(atoms, coord, label=None, **kwargs):
+
+    if label is None:
+        label = "_tmp_mndo_"
+
+    inpstr = create_input(atoms, coord, **kwargs)
+
+    f = open(label + ".mop", 'w')
+    f.write(inpstr)
+    f.close()
+
+    stdout, stderr = run_mndo_file(label + ".mop")
+    stdout = stdout.decode()
+    stdout = stdout.split("\n")
+
+    properties = get_properties(stdout)
+
+    return properties
 
 
 def main():
@@ -234,21 +253,24 @@ def test():
      [   -0.28902 ,  -0.90595 ,  0.00000],
     ]
 
-    inpstr = create_input(atoms, coord)
-    filename = "_tmp_testmndo"
+    # inpstr = create_input(atoms, coord)
+    # filename = "_tmp_testmndo"
+    #
+    # f = open(filename + ".mop", 'w')
+    # f.write(inpstr)
+    # f.close()
+    #
+    # stdout, stderr = run_mndo_file(filename + ".mop")
+    # stdout = stdout.decode()
+    #
+    # f = open(filename + ".out", 'w')
+    # f.write(stdout)
+    # f.close()
+    #
+    # properties = read_properties(filename + ".out")
+    # print(properties)
 
-    f = open(filename + ".mop", 'w')
-    f.write(inpstr)
-    f.close()
-
-    stdout, stderr = run_mndo_file(filename + ".mop")
-    stdout = stdout.decode()
-
-    f = open(filename + ".out", 'w')
-    f.write(stdout)
-    f.close()
-
-    properties = read_properties(filename + ".out")
+    properties = calculate(atoms_water, coord_water)
     print(properties)
 
     return
