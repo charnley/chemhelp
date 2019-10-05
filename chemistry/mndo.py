@@ -2,8 +2,13 @@
 import sys
 import os
 
-here = os.path.dirname(__file__)
-sys.path.append(here + "/..")
+try:
+    import cheminfo
+
+except ModuleNotFoundError:
+    here = os.path.dirname(os.path.abspath(__file__))
+    sys.path.append(here + "/..")
+    import cheminfo
 
 import json
 import subprocess
@@ -44,6 +49,19 @@ def get_rev_index(lines, pattern):
     return None
 
 
+def get_mndo_proc(cmd):
+
+    # universal_newlines=True
+
+    proc = subprocess.Popen(cmd,
+        stdout=subprocess.PIPE,
+        stdin=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        shell=True)
+
+    return proc
+
+
 def run_mndo(stdin):
     """
 
@@ -81,13 +99,30 @@ def run_mndo(stdin):
     return stdout, stderr
 
 
-def run_mndo_file(filename):
+def check_line_unconverged():
+
+
+    return True
+
+def run_mndo_file(filename, checkfunc=check_line_unconverged):
 
     cmd = MNDOCMD
     cmd += " < " + filename
 
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stdin=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True)
     stdout, stderr = proc.communicate()
+
+    # TODO
+    # lines, proc = get_mndo_proc(cmd)
+    # output = []
+    #
+    # for line in iter(proc.stdout.readline, ""):
+    #
+    #     if checkfunc(line):
+    #         output += [line]
+    #     else:
+    #         proc.kill()
+    #         break
 
     return stdout, stderr
 
