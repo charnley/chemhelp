@@ -4,6 +4,7 @@ Module for chemical informatic tasks
 
 """
 
+import os
 from io import StringIO
 import sys
 import gzip
@@ -480,9 +481,25 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.smi is not None:
-        molobj = conformationalsearch(args.smi)
-        sdfstr = molobj_to_sdfstr(molobj)
-        print(sdfstr)
+
+        if os.path.exists(args.smi):
+
+            with open(args.smi, 'r') as f:
+                lines = f.readlines()
+                lines = [line.strip() for line in lines]
+
+            rtnstr = ""
+            for line in lines:
+                molobj = conformationalsearch(line)
+                sdfstr = molobj_to_sdfstr(molobj)
+                rtnstr += sdfstr
+            print(rtnstr)
+
+        else:
+
+            molobj = conformationalsearch(args.smi)
+            sdfstr = molobj_to_sdfstr(molobj)
+            print(sdfstr)
 
 
     pass
