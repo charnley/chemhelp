@@ -277,7 +277,8 @@ def readlines_log(debug=False):
 
         name = line.split("/")
         name = name[-1]
-        name = name.replace(".out", "")
+        name = name.split(".")
+        name = name[0]
 
         try:
             properties = read_properties(line)
@@ -401,6 +402,7 @@ def main():
         atoms_str = [cheminfo.convert_atom(atom) for atom in atoms]
 
         #
+        method = parameters["method"]
         filename = args.sdf.replace(".sdf", "")
         calculate(atoms_str, coordinates, method=method, filename=filename + args.prefix)
 

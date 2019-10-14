@@ -95,10 +95,6 @@ def calculate(atoms, coordinates, parameters=DEFAULT_PARAMETERS, label=None, wri
     return properties
 
 
-def read_properties_g4mp2(filename, values={}):
-
-
-    return
 
 
 def read_line(filename, pattern):
@@ -125,6 +121,27 @@ def readlines_reverse(filename):
                 line += next_char
             position -= 1
         yield line[::-1]
+
+
+def read_properties_g4mp2(filename, values={}):
+
+    properties = {}
+
+    f = open(filename, 'r')
+
+    lines = f.readlines()
+
+    # TODO G4MP2 Free Energy etc etc
+
+    # H
+    idx = get_rev_index(lines, "G4MP2 Enthalpy=")
+    line = lines[idx]
+    line = line.split()
+    value = line[2]
+    value = float(value)
+    properties["h"] = value
+
+    return properties
 
 
 def read_properties_b3lyp(filename, values={}):
@@ -414,12 +431,20 @@ def readlines_log(debug=False):
 
         name = line.split("/")
         name = name[-1]
-        name = name.replace(".log", "")
+        name = name.split(".")
+        name = name[0]
 
         try:
-            properties = read_properties_b3lyp(line)
+
+            if "b3lyp" in line:
+                properties = read_properties_b3lyp(line)
+            elif "g4mp2" in line:
+                properties = read_properties_g4mp2(line)
+
             if debug: print(name)
+
             yield name, properties
+
         except:
             misc.eprint(name, "fail")
             continue
@@ -500,8 +525,6 @@ def main():
             "basis": "6-31G(2df,p)",
             "opt": "()",
             "force": None }
-        s = json.dumps(parameters)
-        print(s)
 
     else:
         with open(args.parameters, 'r') as f:
@@ -545,7 +568,7 @@ def main():
 
 
         else:
-            properties = calculate(atoms, coordinates, parameters=parameters, write_only=True, label=filename+args.prefix, n_threads=30, mem=150)
+            properties = calculate(atoms, coordinates, parameters=parameters, write_only=True, label=filename+args.prefix, n_threads=30, mem=110)
             pass
 
         # e_atomi = calculate_energy_atomization(atoms_str, coordinates, atom_energies=energies, method="B3LYP", basis="6-31G(2df,p)")
@@ -565,6 +588,7 @@ def main():
 
         keys = properties.keys()
         keys = ['mu', 'h', 'homo', 'lumo', 'gap']
+        keys = [key for key in keys if key in properties.keys()]
 
         header = print_csv(["name"]+keys)
         print(header)
@@ -584,7 +608,8 @@ def main():
 
     if args.log:
 
-        properties = read_properties(args.log)
+
+        properties = read_properties_b3lyp(args.log)
 
         for key in properties.keys():
 
