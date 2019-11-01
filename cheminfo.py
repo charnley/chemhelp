@@ -63,6 +63,14 @@ def convert_atom(atom, t=None):
         return atom
 
 
+def atom_str(iatm):
+
+    atom = ATOM_LIST[iatm-1]
+    atom = atom.capitalize()
+
+    return atom
+
+
 def read_sdffile(filename, remove_hs=False, sanitize=True):
     """
     """
@@ -216,16 +224,25 @@ def molobj_to_sdfstr(mol):
 
     """
 
+    n_confs = mol.GetNumConformers()
+
+
+    txts = []
+
+    for i in range(n_confs):
+        txt = Chem.MolToMolBlock(mol, confId=i)
+        txts += [txt]
+
     # Chem rdkit::MolToMolBlock ???!
-    # txt = Chem.MolToMolBlock(mol)
+    # sio = StringIO()
+    # w = Chem.SDWriter(sio)
+    # w.write(mol)
+    # w.flush()
+    # sdfstr = sio.getvalue()
 
-    sio = StringIO()
-    w = Chem.SDWriter(sio)
-    w.write(mol)
-    w.flush()
-    sdfstr = sio.getvalue()
+    txts = "$$$$\n".join(txts)
 
-    return sdfstr
+    return txts
 
 
 def molobj_to_smiles(mol, remove_hs=False):
