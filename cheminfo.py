@@ -371,6 +371,9 @@ def smiles_to_molobj(smilesstr, add_hydrogens=True):
 
     mol = Chem.MolFromSmiles(smilesstr)
 
+    if mol is None:
+        return None, ""
+
     if add_hydrogens:
         mol = Chem.AddHs(mol)
 
@@ -430,8 +433,8 @@ def genereate_conformers(smilesstr, max_conf=20, min_conf=10):
     if molobj is None:
         return None
 
-    status = AllChem.EmbedMolecule(molobj)
-    status = AllChem.UFFOptimizeMolecule(molobj)
+    status_embed = AllChem.EmbedMolecule(molobj)
+    status_optim = AllChem.MMFFOptimizeMolecule(molobj)
 
     # dist = Chem.rdDistGeom.GetMoleculeBoundsMatrix(molobj)
     dist = Chem.rdmolops.Get3DDistanceMatrix(molobj)
@@ -467,7 +470,11 @@ def conformationalsearch(smiles):
     res = AllChem.UFFOptimizeMoleculeConfs(molobj)
     res = np.array(res)
 
-    status = res[:,0]
+    try:
+        status = res[:,0]
+    except IndexError:
+        return None
+
     energies = res[:,1]
     idx_converged, = np.where(status == 0)
     energies = energies[idx_converged]
