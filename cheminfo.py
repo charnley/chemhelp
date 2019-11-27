@@ -211,8 +211,10 @@ def molobj_add_hydrogens(molobj):
 
 def molobj_optimize(molobj):
 
-    status = AllChem.EmbedMolecule(molobj)
-    status = AllChem.UFFOptimizeMolecule(molobj)
+    status_1 = AllChem.EmbedMolecule(molobj)
+    status_2 = AllChem.MMFFOptimizeMolecule(molobj)
+
+    status = status_1 + status_2
 
     return status
 
@@ -431,6 +433,15 @@ def genereate_conformers(smilesstr, max_conf=20, min_conf=10):
     status = AllChem.EmbedMolecule(molobj)
     status = AllChem.UFFOptimizeMolecule(molobj)
 
+    # dist = Chem.rdDistGeom.GetMoleculeBoundsMatrix(molobj)
+    dist = Chem.rdmolops.Get3DDistanceMatrix(molobj)
+    np.fill_diagonal(dist, 10.0)
+    min_dist = np.min(dist)
+
+    # For some atom_types in UFF, it will fail
+    if min_dist < 0.001:
+        return None
+
     rot_bond = rdMolDescriptors.CalcNumRotatableBonds(molobj)
 
     confs = min(1 + 3*rot_bond, max_conf)
@@ -453,7 +464,7 @@ def conformationalsearch(smiles):
     conformers = molobj.GetConformers()
 
     # status will be 0 for converged molecules
-    res = AllChem.MMFFOptimizeMoleculeConfs(molobj)
+    res = AllChem.UFFOptimizeMoleculeConfs(molobj)
     res = np.array(res)
 
     status = res[:,0]
