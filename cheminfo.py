@@ -211,10 +211,10 @@ def molobj_add_hydrogens(molobj):
 
 def molobj_optimize(molobj, max_steps=1000):
 
-    status_2 = AllChem.UFFOptimizeMolecule(molobj, maxIter=max_steps)
+    status_embed = AllChem.EmbedMolecule(molobj)
 
-    if status_1 != 0:
-        return status_1
+    if status_embed != 0:
+        return status_embed
 
     try:
         status_2 = AllChem.UFFOptimizeMolecule(molobj, maxIters=max_steps)
