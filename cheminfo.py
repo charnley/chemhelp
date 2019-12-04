@@ -209,14 +209,19 @@ def molobj_add_hydrogens(molobj):
 
     return molobj
 
-def molobj_optimize(molobj):
+def molobj_optimize(molobj, max_steps=1000):
 
     status_1 = AllChem.EmbedMolecule(molobj)
-    status_2 = AllChem.MMFFOptimizeMolecule(molobj)
 
-    status = status_1 + status_2
+    if status_1 != 0:
+        return status_1
 
-    return status
+    try:
+        status_2 = AllChem.UFFOptimizeMolecule(molobj, maxIters=max_steps)
+    except RuntimeError:
+        status_2 = 5
+
+    return status_2
 
 
 def molobj_to_sdfstr(mol):
