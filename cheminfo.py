@@ -211,7 +211,7 @@ def molobj_add_hydrogens(molobj):
 
 def molobj_optimize(molobj, max_steps=1000):
 
-    status_1 = AllChem.EmbedMolecule(molobj)
+    status_2 = AllChem.UFFOptimizeMolecule(molobj, maxIter=max_steps)
 
     if status_1 != 0:
         return status_1
@@ -431,7 +431,7 @@ def molobj_set_coordinates(molobj, coordinates):
     return
 
 
-def genereate_conformers(smilesstr, max_conf=20, min_conf=10):
+def genereate_conformers(smilesstr, max_conf=20, min_conf=10, max_steps=1000):
 
     molobj, status = smiles_to_molobj(smilesstr, add_hydrogens=True)
 
@@ -439,15 +439,24 @@ def genereate_conformers(smilesstr, max_conf=20, min_conf=10):
         return None
 
     status_embed = AllChem.EmbedMolecule(molobj)
-    status_optim = AllChem.MMFFOptimizeMolecule(molobj)
 
-    # dist = Chem.rdDistGeom.GetMoleculeBoundsMatrix(molobj)
+    if status_embed != 0:
+        return None
+
+    status_optim = AllChem.UFFOptimizeMolecule(molobj, maxIters=max_steps)
+
+    # Keep unconverged uff
+    # if status_optim != 0:
+    #     return None
+
+    # Check bond lengths
     dist = Chem.rdmolops.Get3DDistanceMatrix(molobj)
     np.fill_diagonal(dist, 10.0)
     min_dist = np.min(dist)
 
     # For some atom_types in UFF, it will fail
     if min_dist < 0.001:
+        print("fail", smilesstr)
         return None
 
     rot_bond = rdMolDescriptors.CalcNumRotatableBonds(molobj)
@@ -455,11 +464,40 @@ def genereate_conformers(smilesstr, max_conf=20, min_conf=10):
     confs = min(1 + 3*rot_bond, max_conf)
     confs = max(confs, min_conf)
 
-    AllChem.EmbedMultipleConfs(molobj, numConfs=confs,
-                useExpTorsionAnglePrefs=True,
-                useBasicKnowledge=True)
+    status = AllChem.EmbedMultipleConfs(molobj,
+        numConfs=confs,
+        useExpTorsionAnglePrefs=True,
+        useBasicKnowledge=True)
 
     return molobj
+
+
+def check_conformer_dist(molobj, cutoff=0.001):
+    """
+    For some atom_types in UFF, rdkit will fail optimization and stick multiple atoms ontop of eachother
+
+    especially in CS(F3)
+
+    """
+
+    n_confs = molobj.GetNumConformers()
+
+    status = []
+
+    for i in range(n_confs):
+        dist = Chem.rdmolops.Get3DDistanceMatrix(molobj, confId=i)
+        np.fill_diagonal(dist, 10.0)
+        min_dist = np.min(dist)
+
+        this = 0
+        if min_dist < cutoff:
+            this += 1
+
+        status.append(this)
+
+    status = np.array(status)
+
+    return status
 
 
 def conformationalsearch(smiles):
@@ -480,14 +518,24 @@ def conformationalsearch(smiles):
     except IndexError:
         return None
 
-    energies = res[:,1]
+    # check distances
+    status_dist = check_conformer_dist(molobj)
+    status += status_dist
+
     idx_converged, = np.where(status == 0)
+
+    energies = res[:,1]
     energies = energies[idx_converged]
 
     if energies.shape[0] == 0:
         return None
 
+    # lowest converged energy
     idx_lowest = np.argsort(energies)[0]
+
+    # convert to global idx
+    idx_lowest = idx_converged[idx_lowest]
+
     coord = conformers[idx_lowest].GetPositions()
 
     molobj.RemoveAllConformers()
