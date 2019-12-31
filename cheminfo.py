@@ -71,6 +71,12 @@ def atom_str(iatm):
     return atom
 
 
+def atom_int(atmstr):
+    atom = atmstr.lower()
+    atom = ATOM_LIST.index(atom) + 1
+    return atom
+
+
 def read_sdffile(filename, remove_hs=False, sanitize=True):
     """
     """
@@ -557,6 +563,89 @@ def save_molobj(molobj, coordinates=None):
     sdf = molobj_to_sdfstr(molobj)
 
     return sdf
+
+
+def molobj_to_mol2(molobj, charges=None):
+    """
+    function from
+    https://www.mdanalysis.org/docs/_modules/MDAnalysis/coordinates/MOL2.html
+
+    """
+
+    # Bonds
+    bond_lines = ["@<TRIPOS>BOND"]
+    bond_fmt = "{0:>5} {1:>5} {2:>5} {3:>2}"
+    bonds = list(molobj.GetBonds())
+    n_bonds = len(bonds)
+    for i, bond in enumerate(bonds):
+        a = bond.GetBeginAtomIdx()
+        b = bond.GetEndAtomIdx()
+        t = bond.GetBondType()
+        tf = bond.GetBondTypeAsDouble()
+
+        if tf.is_integer():
+            t = int(t)
+        else:
+            t = "ar"
+
+        bond = bond_fmt.format(i+1, a, b, t)
+        bond_lines.append(bond)
+
+    bond_lines.append("\n")
+    bond_lines = "\n".join(bond_lines)
+
+    # Atoms
+    atom_lines = ["@<TRIPOS>ATOM"]
+    atom_fmt = "{0:>4} {1:>4} {2:>13.4f} {3:>9.4f} {4:>9.4f} {5:>4} {6} {7} {8:>7.4f}"
+    atoms = list(molobj.GetAtoms())
+    atoms_int = [atom.GetAtomicNum() for atom in atoms]
+    atoms_str = [atom.GetSymbol() for atom in atoms]
+    atoms_int = np.array(atoms_int)
+    n_atoms = len(atoms)
+    conformer = molobj.GetConformer()
+    coordinates = conformer.GetPositions()
+    coordinates = np.array(coordinates)
+    unique_atoms = np.unique(atoms_int)
+
+    if charges is None:
+        charges = np.zeros(n_atoms)
+
+    atm_i = 1
+
+    for atom_type in unique_atoms:
+        idxs, = np.where(atoms_int == atom_type)
+
+        for i, j in enumerate(idxs):
+
+            idx = atm_i
+            name = atoms_str[j]+str(i+1)
+            pos0 = coordinates[j,0]
+            pos1 = coordinates[j,1]
+            pos2 = coordinates[j,2]
+            typ = atoms_str[j]
+            resid = 0
+            resname = "MOL"
+            charge = charges[j]
+
+            atmstr = atom_fmt.format(idx, name, pos0, pos1, pos2, typ, resid,  resname, charge)
+            atom_lines.append(atmstr)
+
+            atm_i += 1
+            continue
+
+    atom_lines.append("")
+    atom_lines = "\n".join(atom_lines)
+
+    # Complete
+    checksumstr = f"{n_atoms} {n_bonds} 0 0 0"
+    head_lines = ["@<TRIPOS>MOLECULE", "TITLE"]
+    head_lines += [checksumstr, "SMALL", "USER_CHARGES", "NAME"]
+    head_lines.append("")
+    head_lines = "\n".join(head_lines)
+
+    rtnstr = head_lines + atom_lines + bond_lines
+
+    return rtnstr
 
 
 if __name__ == "__main__":
