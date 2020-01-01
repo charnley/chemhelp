@@ -43,30 +43,62 @@ def read_line(filename, pattern):
     return None
 
 
-def get_index(lines, pattern):
-    for i, line in enumerate(lines):
+def get_index(lines, pattern, offset=None, n_lines=None):
+
+    if offset is None:
+        offset = 0
+
+    if n_lines is None:
+        n_lines = len(lines)
+
+    for i in range(offset, n_lines):
+        line = lines[i]
         if line.find(pattern) != -1:
             return i
+
     return None
 
 
-def reverse_enum(L):
-    for index in reversed(range(len(L))):
+def reverse_enum(L, max_lines=None, lenl=None):
+
+    if lenl is None:
+        lenl = len(L)
+
+    if max_lines is None:
+        iterator = reversed(range(lenl))
+    else:
+        iterator = reversed(range(min(lenl, max_lines)))
+
+    for index in iterator:
         yield index, L[index]
 
 
-def get_rev_index(lines, pattern):
+def get_rev_index(lines, pattern, max_lines=None, lenl=None):
 
-    for i, line in reverse_enum(lines):
+    for i, line in reverse_enum(lines, max_lines=max_lines):
         if line.find(pattern) != -1:
             return i
 
     return None
 
 
-def run_mopac(command):
+def shell(cmd, shell=False):
+    """
 
-    errorcode = subprocess.call(command, shell=True)
+    Run a sh command.
 
-    return errorcode
+    return the stdout and stderr
+
+    """
+
+    if shell:
+        proc = subprocess.Popen(cmd, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    else:
+        cmd = cmd.split()
+        proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+    output, err = proc.communicate()
+    output = output.decode("utf-8")
+    err = err.decode("utf-8")
+    return output, err
 

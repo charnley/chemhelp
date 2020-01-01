@@ -17,7 +17,10 @@ import ase
 import ase.optimize as optlib
 import misc
 
-import xtbcalc
+try:
+    import xtbcalc
+except:
+    pass
 
 
 def main():

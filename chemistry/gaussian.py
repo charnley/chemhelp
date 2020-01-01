@@ -16,8 +16,6 @@ import numpy as np
 import ase
 
 import logging
-import cclib
-from cclib.parser import Gaussian as GaussianReader
 
 import subprocess
 
