@@ -46,12 +46,13 @@ def calculate_optimize(molobj,
     if header is None:
         header = """ $basis gbasis=pm3 $end
  $contrl runtyp=optimize icharg={:} $end
- $statpt opttol=0.0005 nstep=200 projct=.F. $end
+ $statpt opttol=0.0005 nstep=300 projct=.F. $end
 """
 
     inpstr = molobj_to_gmsinp(molobj, header)
 
-    properties = run(inpstr, parser=parser, **kwargs)
+    stdout, status = run(inpstr, **kwargs)
+    properties = parser(stdout)
 
     return properties
 
@@ -84,11 +85,11 @@ def calculate_solvation():
     return dict()
 
 
-def calculate(molobj, header, parser, **kwargs):
+def calculate(molobj, header, **kwargs):
 
     inpstr = molobj_to_gmsinp(molobj, header)
 
-    properties = run(inpstr, parser=parser, **kwargs)
+    properties = run(inpstr, **kwargs)
 
     return properties
 
@@ -208,9 +209,8 @@ def molobj_to_gmsinp(mol, header, add_hydrogens=False):
 
 def run(inpstr, scr=__tmp__,
     filename=None,
-    parser=None,
-    keep_output=False,
-    autoclean=True):
+    autoclean=True,
+    debug=False):
     """
     """
 
@@ -228,6 +228,9 @@ def run(inpstr, scr=__tmp__,
     cmd = __rungms__ + " " + filename
     stdout, stderr = misc.shell(cmd)
 
+    if debug:
+        print(stderr)
+
     if autoclean:
         files = glob.glob(__scr__ + filename.replace(".inp", "") + "*")
         for f in files:
@@ -235,13 +238,7 @@ def run(inpstr, scr=__tmp__,
 
     os.chdir(pwd)
 
-    # Parse output
-    if parser is None:
-        parser = read_properties
-
-    properties = parser(stdout)
-
-    return properties
+    return stdout, stderr
 
 
 def check_output(output):
@@ -372,7 +369,9 @@ def read_properties_vibration(output):
     # based on number of vibrations and number of atoms
     idx = misc.get_rev_index(lines, " TAKEN AS ROTATIONS AND TRANSLATIONS.")
     vib_lines = "\n".join(lines[idx:idx_start])
-    head_lines = "\n".join(lines[0:34+18+n_atoms*2])
+
+    idx_end = misc.get_index(lines, "ELECTRON INTEGRALS")
+    head_lines = "\n".join(lines[18:idx_end])
 
     properties["jsmol"] = head_lines + vib_lines
     properties["linear"] = is_linear
@@ -422,7 +421,7 @@ def read_properties_orbitals(output):
 
         j += 1
 
-    properties["orbitals"] = energies
+    properties["orbitals"] = np.array(energies)
 
     return properties
 

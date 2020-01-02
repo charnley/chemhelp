@@ -588,7 +588,7 @@ def molobj_to_mol2(molobj, charges=None):
         else:
             t = "ar"
 
-        bond = bond_fmt.format(i+1, a, b, t)
+        bond = bond_fmt.format(i+1, a+1, b+1, t)
         bond_lines.append(bond)
 
     bond_lines.append("\n")
@@ -612,26 +612,23 @@ def molobj_to_mol2(molobj, charges=None):
 
     atm_i = 1
 
-    for atom_type in unique_atoms:
-        idxs, = np.where(atoms_int == atom_type)
 
-        for i, j in enumerate(idxs):
+    for j in range(n_atoms):
 
-            idx = atm_i
-            name = atoms_str[j]+str(i+1)
-            pos0 = coordinates[j,0]
-            pos1 = coordinates[j,1]
-            pos2 = coordinates[j,2]
-            typ = atoms_str[j]
-            resid = 0
-            resname = "MOL"
-            charge = charges[j]
+        name = atoms_str[j]
+        pos0 = coordinates[j,0]
+        pos1 = coordinates[j,1]
+        pos2 = coordinates[j,2]
+        typ = atoms_str[j]
+        resid = 0
+        resname = "MOL"
+        charge = charges[j]
 
-            atmstr = atom_fmt.format(idx, name, pos0, pos1, pos2, typ, resid,  resname, charge)
-            atom_lines.append(atmstr)
+        atmstr = atom_fmt.format(j+1, name, pos0, pos1, pos2, typ, resid,  resname, charge)
+        atom_lines.append(atmstr)
 
-            atm_i += 1
-            continue
+        atm_i += 1
+        continue
 
     atom_lines.append("")
     atom_lines = "\n".join(atom_lines)
@@ -639,7 +636,7 @@ def molobj_to_mol2(molobj, charges=None):
     # Complete
     checksumstr = f"{n_atoms} {n_bonds} 0 0 0"
     head_lines = ["@<TRIPOS>MOLECULE", "TITLE"]
-    head_lines += [checksumstr, "SMALL", "USER_CHARGES", "NAME"]
+    head_lines += [checksumstr, "SMALL", "MULLIKEN_CHARGES", "NAME"]
     head_lines.append("")
     head_lines = "\n".join(head_lines)
 
