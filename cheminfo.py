@@ -2,6 +2,8 @@
 
 Module for chemical informatic tasks
 
+TODO AllChem.Compute2DCoords(m) for png
+
 """
 
 import os

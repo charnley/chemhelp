@@ -422,6 +422,7 @@ def read_properties_orbitals(output):
         j += 1
 
     properties["orbitals"] = np.array(energies)
+    properties["stdout"] = output
 
     return properties
 
