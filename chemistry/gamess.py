@@ -22,9 +22,9 @@ global __tmp__
 global __scr__
 
 
-__rungms__ = "/home/charnley/opt/gamess/gamess-github/rungms"
-__scr__ = "/home/charnley/scr/"
-__tmp__ = "/home/charnley/scr/"
+__rungms__ = "/opt/gamess/rungms"
+__scr__ = "/tmp/gamess/"
+__tmp__ = "/tmp/gamess/"
 
 
 re_coordinates = re.compile('COORDINATES OF ALL ATOMS ARE (.*?)------------\n(.*?)\n\n', re.DOTALL)
@@ -468,7 +468,8 @@ def read_properties_solvation(output):
     line = line.split("=")
     charge = int(line[-1])
 
-    idx = misc.get_rev_index(lines, "SURFACE AREA")
+    # TODO First or last?
+    idx = misc.get_index(lines, "SURFACE AREA")
     line = lines[idx]
     line = line.split()
     surface_area = line[2]
