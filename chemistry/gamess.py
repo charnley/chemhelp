@@ -242,13 +242,18 @@ def run(inpstr, scr=__tmp__,
 
 
 def check_output(output):
+    """
+    check sanity of GAMESS output
+    """
 
     # TODO ELECTRONS, WITH CHARGE ICHARG=
 
     # TODO redo in Python. Real categories of fail. Better output
     # TODO Did gasphase or solvent phase not converge?
     # TODO How many steps?
-    #
+
+    # TODO FAILURE TO LOCATE STATIONARY POINT, TOO MANY STEPS TAKEN
+
     # grep  "FAILURE" *.log
     # grep  "Failed" *.log
     # grep  "ABNORMALLY" *.log
@@ -283,8 +288,14 @@ def read_properties_coordinates(output):
     line = line.split("=")
     n_atoms = int(line[-1])
 
-    idx = misc.get_rev_index(lines, "EQUILIBRIUM GEOMETRY LOCATED")
-    idx += 4
+    try:
+        idx = misc.get_rev_index(lines, "EQUILIBRIUM GEOMETRY LOCATED")
+        idx += 4
+    except:
+        # GAMESS didn't converge with steps, continue anyway
+        idx = misc.get_rev_index(lines, "COORDINATES OF ALL ATOMS ARE (ANGS)")
+        idx += 3
+
 
     coordinates = np.zeros((n_atoms, 3))
     atoms = np.zeros(n_atoms, dtype=int)
