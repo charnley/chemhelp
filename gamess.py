@@ -1,97 +1,30 @@
 
 import glob
+import os
 import re
 import sys
-import os
+import subprocess
 
 import numpy as np
-
 import rdkit
 import rdkit.Chem as Chem
 import rdkit.Chem.AllChem as AllChem
 
-import rmsd
-
-from chemhelp import cheminfo
-from chemhelp import misc
-
-# TODO get settings from ini file
-
-global __rungms__
-global __tmp__
-global __scr__
+import chemhelp.cheminfo
+import chemhelp.misc
 
 
-__rungms__ = "/opt/gamess/rungms"
-__scr__ = "/tmp/gamess/"
-__tmp__ = "/tmp/gamess/"
-
-
-re_coordinates = re.compile('COORDINATES OF ALL ATOMS ARE (.*?)------------\n(.*?)\n\n', re.DOTALL)
-re_error = re.compile('^( \*\*\*|Error:)')
-
-def calculate_optimize(molobj,
-    header=None,
-    parser=None,
-    **kwargs):
-    """
-    Optimize, get coordinates
-
-
-    """
-
-    if parser is None:
-        parser = read_properties_coordinates
-
-    if header is None:
-        header = """ $basis gbasis=pm3 $end
- $contrl runtyp=optimize icharg={:} $end
- $statpt opttol=0.0005 nstep=300 projct=.F. $end
-"""
-
-    inpstr = molobj_to_gmsinp(molobj, header)
-
-    stdout, status = run(inpstr, **kwargs)
-    properties = parser(stdout)
-
-    return properties
-
-
-def calculate_thermodynamics(molobj):
-
-    header = """
-
-"""
-
-
-    return dict()
-
-
-def calculate_orbitals(molobj):
-
-
-    return dict()
-
-
-def calculate_vibrations():
-
-
-    return dict()
-
-
-def calculate_solvation():
-
-
-    return dict()
+RUNGMS = "rungms"
+SCR = "/tmp"
 
 
 def calculate(molobj, header, **kwargs):
 
     inpstr = molobj_to_gmsinp(molobj, header)
 
-    properties = run(inpstr, **kwargs)
+    stdout, stderr = run(inpstr, **kwargs)
 
-    return properties
+    return stdout, stderr
 
 
 def prepare_atoms(atoms, coordinates):
@@ -108,7 +41,6 @@ def prepare_atoms(atoms, coordinates):
     return "\n".join(lines)
 
 
-
 def prepare_xyz(filename, charge, header):
     """
     """
@@ -121,7 +53,6 @@ def prepare_xyz(filename, charge, header):
     gmsin = header + lines
 
     return gmsin
-
 
 
 def prepare_mol(filename, header, add_hydrogens=True):
@@ -138,11 +69,6 @@ def prepare_mol(filename, header, add_hydrogens=True):
     # get formal charge
     charge = Chem.GetFormalCharge(mol)
 
-    # Add hydrogens
-    if add_hydrogens:
-        mol = Chem.AddHs(mol)
-        AllChem.EmbedMolecule(mol, AllChem.ETKDG())
-
     # Get coordinates
     conf = mol.GetConformer(0)
     for atom in mol.GetAtoms():
@@ -158,9 +84,13 @@ def prepare_mol(filename, header, add_hydrogens=True):
     return header + lines
 
 
-def molobj_to_gmsinp(mol, header, add_hydrogens=False):
+def molobj_to_gmsinp(mol, header, conf_idx=-1):
     """
     RDKit Mol object to GAMESS input file
+
+    args:
+        mol - rdkit molobj
+        header - str of gamess header
 
     returns:
         str - GAMESS input file
@@ -172,13 +102,8 @@ def molobj_to_gmsinp(mol, header, add_hydrogens=False):
     # get formal charge
     charge = Chem.GetFormalCharge(mol)
 
-    # Add hydrogens
-    if add_hydrogens:
-        mol = Chem.AddHs(mol)
-        AllChem.EmbedMolecule(mol, AllChem.ETKDG())
-
     # Get coordinates
-    conf = mol.GetConformer(0)
+    conf = mol.GetConformer(conf_idx)
     for atom in mol.GetAtoms():
         pos = conf.GetAtomPosition(atom.GetIdx())
         xyz = [pos.x, pos.y, pos.z]
@@ -191,25 +116,13 @@ def molobj_to_gmsinp(mol, header, add_hydrogens=False):
     return header + lines
 
 
-# def calculate(filename, folder="./", store_output=True):
-#     """
-#     Use GAMESS shell and calculate
-#     """
-#
-#     logfile = filename.replace(".inp", ".log")
-#
-#     cmd = __rungms__ + " " + filename
-#     if store_output:
-#         cmd += " > " + folder + logfile
-#
-#     stdout, stderr = shell.shell(cmd, shell=True)
-#
-#     return stdout, stderr
-
-
-def run(inpstr, scr=__tmp__,
+def run(inpstr,
+    cmd=RUNGMS,
+    scr=SCR,
     filename=None,
     autoclean=True,
+    gamess_scr="~/scr",
+    gamess_userscr="~/scr",
     debug=False):
     """
     """
@@ -225,35 +138,56 @@ def run(inpstr, scr=__tmp__,
     with open(filename, 'w') as f:
         f.write(inpstr)
 
-    cmd = __rungms__ + " " + filename
-    stdout, stderr = misc.shell(cmd)
+    cmd = cmd + " " + filename
+
+    if debug:
+        print(cmd)
+
+    proc = subprocess.Popen(cmd,
+        shell=True,
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE)
+
+    stdout, stderr = proc.communicate()
+    stdout = stdout.decode("utf-8")
+    stderr = stderr.decode("utf-8")
+
+    print(stdout)
 
     if debug:
         print(stderr)
 
     if autoclean:
-        files = glob.glob(__scr__ + filename.replace(".inp", "") + "*")
-        for f in files:
-            os.remove(f)
+        clean(scr, filename)
+        clean(gamess_scr, filename)
+        clean(gamess_userscr, filename)
 
+    # TODO no
     os.chdir(pwd)
 
     return stdout, stderr
 
 
+def clean(scr, filename, debug=False):
+
+    search = os.path.join(scr, filename.replace(".inp", "*"))
+    files = glob.glob(search)
+    for f in files:
+        if debug: print("rm", f)
+        os.remove(f)
+
+    return
+
+
 def check_output(output):
-    """
-    check sanity of GAMESS output
-    """
 
     # TODO ELECTRONS, WITH CHARGE ICHARG=
 
     # TODO redo in Python. Real categories of fail. Better output
     # TODO Did gasphase or solvent phase not converge?
     # TODO How many steps?
-
-    # TODO FAILURE TO LOCATE STATIONARY POINT, TOO MANY STEPS TAKEN
-
+    #
     # grep  "FAILURE" *.log
     # grep  "Failed" *.log
     # grep  "ABNORMALLY" *.log
@@ -265,17 +199,10 @@ def check_output(output):
     return True, ""
 
 
-def check_filename(filename):
-    """
-    Check that the GAMESS calculation is not crashed
-    """
-
-    return True, ""
-
-
 def read_properties(output):
 
     return
+
 
 def read_properties_coordinates(output):
 
@@ -288,14 +215,8 @@ def read_properties_coordinates(output):
     line = line.split("=")
     n_atoms = int(line[-1])
 
-    try:
-        idx = misc.get_rev_index(lines, "EQUILIBRIUM GEOMETRY LOCATED")
-        idx += 4
-    except:
-        # GAMESS didn't converge with steps, continue anyway
-        idx = misc.get_rev_index(lines, "COORDINATES OF ALL ATOMS ARE (ANGS)")
-        idx += 3
-
+    idx = misc.get_rev_index(lines, "EQUILIBRIUM GEOMETRY LOCATED")
+    idx += 4
 
     coordinates = np.zeros((n_atoms, 3))
     atoms = np.zeros(n_atoms, dtype=int)
@@ -440,8 +361,6 @@ def read_properties_orbitals(output):
 
 def read_properties_solvation(output):
 
-    cal_to_joule = 4.18; # cal/mol to joule
-
     properties = {}
 
     lines = output.split("\n")
@@ -480,8 +399,7 @@ def read_properties_solvation(output):
     line = line.split("=")
     charge = int(line[-1])
 
-    # TODO First or last?
-    idx = misc.get_index(lines, "SURFACE AREA")
+    idx = misc.get_rev_index(lines, "SURFACE AREA")
     line = lines[idx]
     line = line.split()
     surface_area = line[2]
@@ -518,23 +436,13 @@ def read_properties_solvation(output):
 
 if __name__ == "__main__":
 
-
-    with open("header_pm3_opt") as f:
-        header = f.readlines()
-        header = "".join(header)
-
-
-    # gmsinp = prepare_xyz("test.xyz", 0, header)
+    header = """ $basis gbasis=pm3 $end
+ $contrl runtyp=energy icharg={:} $end
+"""
 
     gmsinp = prepare_mol("test_charge.mol", header)
 
     f = open("test.inp", 'w')
     f.write(gmsinp)
     f.close()
-
-    calculate("test.inp", folder="./")
-    clean() # In production this should be automatic!
-
-
-
 
