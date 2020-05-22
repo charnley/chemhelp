@@ -340,8 +340,6 @@ def sdfstr_to_molobj(sdfstr, remove_hs=False):
     # if mol is None:
     #     return None, sio.getvalue()
 
-    print("hello?")
-
     return mol
 
 
