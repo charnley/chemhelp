@@ -340,7 +340,9 @@ def sdfstr_to_molobj(sdfstr, remove_hs=False):
     # if mol is None:
     #     return None, sio.getvalue()
 
-    return mol, ""
+    print("hello?")
+
+    return mol
 
 
 def sdfstr_to_smiles(sdfstr, remove_hs=False):
