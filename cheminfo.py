@@ -79,6 +79,17 @@ def atom_int(atmstr):
     return atom
 
 
+def clean_sdf_header(sdfstr):
+
+    sdfstr = str(sdfstr)
+    for _ in range(2):
+        i = sdfstr.index('\n')
+        sdfstr = sdfstr[i+1:]
+    sdfstr = "\n\n" + sdfstr
+
+    return sdfstr
+
+
 def read_sdffile(filename, remove_hs=False, sanitize=True):
     """
     """
@@ -275,9 +286,10 @@ def molobj_to_smiles(mol, remove_hs=False):
 
 
 def molobj_to_svgstr(molobj,
-                     highlights=None,
-                     pretty=False,
-                     removeHs=False):
+    force2d=False,
+    highlights=None,
+    pretty=False,
+    removeHs=False):
     """
 
     Returns SVG in string format
@@ -286,6 +298,10 @@ def molobj_to_svgstr(molobj,
 
     if removeHs:
         molobj = Chem.RemoveHs(molobj)
+
+    if force2d:
+        molobj = copy.deepcopy(molobj)
+        # TODO complete this func
 
     svg = Draw.MolsToGridImage(
         [molobj],
@@ -329,16 +345,18 @@ def molobj_to_svgstr(molobj,
     return svg
 
 
-def sdfstr_to_molobj(sdfstr, remove_hs=False):
+def sdfstr_to_molobj(sdfstr, remove_hs=False, return_status=False):
     """
     SDF to mol obj
     """
 
-    # sio = sys.stderr = StringIO()
+    if return_status:
+        sio = sys.stderr = StringIO()
+
     mol = Chem.MolFromMolBlock(sdfstr, removeHs=remove_hs)
 
-    # if mol is None:
-    #     return None, sio.getvalue()
+    if return_status:
+        return mol, sio.getvalue()
 
     return mol
 

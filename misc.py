@@ -1,4 +1,6 @@
 
+import numpy as np
+from io import StringIO
 import sys
 import subprocess
 import pickle
@@ -15,6 +17,19 @@ def save_obj(name, obj):
 def load_obj(name):
     with open(name + '.pkl', 'rb') as f:
         return pickle.load(f)
+
+
+def load_array(txt):
+    s = StringIO(txt)
+    arr = np.loadtxt(s)
+    return arr
+
+
+def save_array(arr):
+    s = StringIO()
+    np.savetxt(s, arr)
+    return s.getvalue()
+
 
 
 def readlines_reverse(filename):

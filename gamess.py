@@ -10,8 +10,8 @@ import rdkit
 import rdkit.Chem as Chem
 import rdkit.Chem.AllChem as AllChem
 
-import chemhelp.cheminfo
-import chemhelp.misc
+import chemhelp.cheminfo as cheminfo
+import chemhelp.misc as misc
 
 
 RUNGMS = "rungms"
@@ -152,8 +152,6 @@ def run(inpstr,
     stdout, stderr = proc.communicate()
     stdout = stdout.decode("utf-8")
     stderr = stderr.decode("utf-8")
-
-    print(stdout)
 
     if debug:
         print(stderr)
