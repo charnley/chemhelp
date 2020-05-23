@@ -197,6 +197,26 @@ def check_output(output):
     return True, ""
 
 
+def read_errors(lines):
+
+    if type(lines) == str:
+        lines = lines.split("\n")
+
+    msg = {}
+
+    key = "CHECK YOUR INPUT CHARGE AND MULTIPLICITY"
+    idx = misc.get_rev_index(lines, key)
+    if idx is not None:
+        line = lines[idx+1:idx+2]
+        line = [x.strip().lower().capitalize() for x in line]
+        line = ". ".join(line)
+        line = line.replace("icharg=", "").replace("mult=", "")
+        msg["error"] = line + ". Only multiplicity 1 allowed."
+        return msg
+
+    return msg
+
+
 def read_properties(output):
 
     return
@@ -212,6 +232,11 @@ def read_properties_coordinates(output):
     line = lines[idx]
     line = line.split("=")
     n_atoms = int(line[-1])
+
+    idx = misc.get_rev_index(lines, "FAILURE TO LOCATE STATIONARY POINT, TOO MANY STEPS TAKEN", stoppattern="NSEARCH")
+    if idx is not None:
+        properties["error"] = "Failed to optimize molecule, too many steps taken. <br /> Try to displace atoms and re-calculate."
+        return properties
 
     idx = misc.get_rev_index(lines, "EQUILIBRIUM GEOMETRY LOCATED")
     idx += 4

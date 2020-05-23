@@ -88,11 +88,15 @@ def reverse_enum(L, max_lines=None, lenl=None):
         yield index, L[index]
 
 
-def get_rev_index(lines, pattern, max_lines=None, lenl=None):
+def get_rev_index(lines, pattern, max_lines=None, lenl=None, stoppattern=False):
 
     for i, line in reverse_enum(lines, max_lines=max_lines):
+
         if line.find(pattern) != -1:
             return i
+
+        if stoppattern and stoppattern in line:
+            return None
 
     return None
 
