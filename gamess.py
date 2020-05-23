@@ -207,8 +207,10 @@ def read_errors(lines):
 
     msg = {}
 
+    safeword = "NSERCH"
+
     key = "CHECK YOUR INPUT CHARGE AND MULTIPLICITY"
-    idx = misc.get_rev_index(lines, key)
+    idx = misc.get_rev_index(lines, key, stoppattern=safeword)
     if idx is not None:
         line = lines[idx+1:idx+2]
         line = [x.strip().lower().capitalize() for x in line]
@@ -217,11 +219,15 @@ def read_errors(lines):
         msg["error"] = line + ". Only multiplicity 1 allowed."
         return msg
 
-
-    idx = misc.get_rev_index(lines, "FAILURE TO LOCATE STATIONARY POINT, TOO MANY STEPS TAKEN", stoppattern="NSEARCH")
+    idx = misc.get_rev_index(lines, "FAILURE TO LOCATE STATIONARY POINT, TOO MANY STEPS TAKEN", stoppattern=safeword)
     if idx is not None:
         msg["error"] = "Failed to optimize molecule, too many steps taken. <br /> Try to displace atoms and re-calculate."
+        return msg
 
+    idx = misc.get_rev_index(lines, "FAILURE TO LOCATE STATIONARY POINT, SCF HAS NOT CONVERGED", stoppattern=safeword)
+    if idx is not None:
+        msg["error"] = "Failed to optimize molecule, electrons too complicated. <br /> Try to displace atoms and re-calculate."
+        return msg
 
     return msg
 
