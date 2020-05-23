@@ -362,7 +362,6 @@ def sdfstr_to_smiles(sdfstr, remove_hs=False):
     SDF to SMILES converter
     """
 
-    # sio = sys.stderr = StringIO()
     mol = Chem.MolFromMolBlock(sdfstr, removeHs=remove_hs)
 
     smiles = Chem.MolToSmiles(mol)
