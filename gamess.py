@@ -241,6 +241,12 @@ def read_properties_coordinates(output):
         properties["error"] = "Failed to optimize molecule, too many steps taken. <br /> Try to displace atoms and re-calculate."
         return properties
 
+    idx = misc.get_rev_index(lines, "FAILURE TO LOCATE STATIONARY POINT, SCF HAS NOT CONVERGED", stoppattern="NESERCH")
+    if idx is not None:
+        properties["error"] = "Failed to optimize molecule, electrons too complicated. <br /> Try to displace atoms and re-calculate."
+        return properties
+
+
     idx = misc.get_rev_index(lines, "EQUILIBRIUM GEOMETRY LOCATED")
     idx += 4
 
