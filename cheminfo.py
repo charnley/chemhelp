@@ -250,21 +250,15 @@ def molobj_to_sdfstr(mol):
 
     """
 
-    n_confs = mol.GetNumConformers()
+    if mol is None: return None
 
+    n_confs = mol.GetNumConformers()
 
     txts = []
 
     for i in range(n_confs):
         txt = Chem.MolToMolBlock(mol, confId=i)
         txts += [txt]
-
-    # Chem rdkit::MolToMolBlock ???!
-    # sio = StringIO()
-    # w = Chem.SDWriter(sio)
-    # w.write(mol)
-    # w.flush()
-    # sdfstr = sio.getvalue()
 
     txts = "$$$$\n".join(txts)
 
@@ -351,12 +345,14 @@ def sdfstr_to_molobj(sdfstr, remove_hs=False, return_status=False):
     """
 
     if return_status:
+        Chem.WrapLogs()
         sio = sys.stderr = StringIO()
 
     mol = Chem.MolFromMolBlock(sdfstr, removeHs=remove_hs)
 
     if return_status:
-        return mol, sio.getvalue()
+        msg = sio.getvalue()
+        return mol, msg
 
     return mol
 
@@ -369,46 +365,58 @@ def sdfstr_to_smiles(sdfstr, remove_hs=False):
     # sio = sys.stderr = StringIO()
     mol = Chem.MolFromMolBlock(sdfstr, removeHs=remove_hs)
 
-    if mol is None:
-        return None, "" #sio.getvalue()
-
     smiles = Chem.MolToSmiles(mol)
-    status = ""
 
-    return smiles, status
+    return smiles
 
 
-def smiles_to_sdfstr(smilesstr, add_hydrogens=True):
+def smiles_to_sdfstr(smilesstr,
+    add_hydrogens=True,
+    return_status=False):
     """
     SMILES to SDF converter
     """
 
-    # sio = sys.stderr = StringIO()
+    if return_status:
+        Chem.WrapLogs()
+        sio = sys.stderr = StringIO()
+
     mol = Chem.MolFromSmiles(smilesstr)
 
-    if mol is None:
-        return None, "" #sio.getvalue()
+    if return_status:
+        msg = sio.getvalue()
 
-    if add_hydrogens:
+    if mol is not None and add_hydrogens:
         mol = Chem.AddHs(mol)
 
     sdfstr = molobj_to_sdfstr(mol)
-    status = ""
 
-    return sdfstr, status
+    if return_status:
+        sdfstr, msg
+
+    return sdfstr
 
 
-def smiles_to_molobj(smilesstr, add_hydrogens=True):
+def smiles_to_molobj(smilesstr,
+    add_hydrogens=True,
+    return_status=False):
+
+    if return_status:
+        Chem.WrapLogs()
+        sio = sys.stderr = StringIO()
 
     mol = Chem.MolFromSmiles(smilesstr)
 
-    if mol is None:
-        return None, ""
+    if return_status:
+        msg = sio.getvalue()
 
-    if add_hydrogens:
+    if mol is not None and add_hydrogens:
         mol = Chem.AddHs(mol)
 
-    return mol, ""
+    if return_status:
+        return mol, msg
+
+    return mol
 
 
 def add_conformer(molobj, coordinates):
