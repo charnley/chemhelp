@@ -154,6 +154,9 @@ def run(inpstr,
     stderr = stderr.decode("utf-8")
 
     if debug:
+        print(stdout)
+
+    if debug:
         print(stderr)
 
     if autoclean:
