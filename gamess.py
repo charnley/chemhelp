@@ -217,6 +217,12 @@ def read_errors(lines):
         msg["error"] = line + ". Only multiplicity 1 allowed."
         return msg
 
+
+    idx = misc.get_rev_index(lines, "FAILURE TO LOCATE STATIONARY POINT, TOO MANY STEPS TAKEN", stoppattern="NSEARCH")
+    if idx is not None:
+        msg["error"] = "Failed to optimize molecule, too many steps taken. <br /> Try to displace atoms and re-calculate."
+
+
     return msg
 
 
