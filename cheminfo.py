@@ -466,7 +466,7 @@ def molobj_set_coordinates(molobj, coordinates):
 
 def genereate_conformers(smilesstr, max_conf=20, min_conf=10, max_steps=1000):
 
-    molobj, status = smiles_to_molobj(smilesstr, add_hydrogens=True)
+    molobj = smiles_to_molobj(smilesstr, add_hydrogens=True)
 
     if molobj is None:
         return None
