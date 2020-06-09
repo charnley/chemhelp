@@ -672,6 +672,11 @@ def molobj_to_mol2(molobj, charges=None):
     return rtnstr
 
 
+def remove_salt(smiles):
+
+    return max(smiles.split("."), key=len)
+
+
 if __name__ == "__main__":
 
     import argparse
