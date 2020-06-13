@@ -243,7 +243,7 @@ def molobj_optimize(molobj, max_steps=1000):
     return status_2
 
 
-def molobj_to_sdfstr(mol):
+def molobj_to_sdfstr(mol, use_v3000=False):
     """
 
     there must be a easier way to do this
@@ -257,7 +257,7 @@ def molobj_to_sdfstr(mol):
     txts = []
 
     for i in range(n_confs):
-        txt = Chem.MolToMolBlock(mol, confId=i)
+        txt = Chem.MolToMolBlock(mol, confId=i, forceV3000=use_v3000)
         txts += [txt]
 
     txts = "$$$$\n".join(txts)
