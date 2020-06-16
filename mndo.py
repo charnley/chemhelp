@@ -11,6 +11,7 @@ import functools
 import shutil
 import copy
 
+from . import units
 
 __IGNORE_PARAMS__ = [
     'DD2',
@@ -31,7 +32,6 @@ __IGNORE_PARAMS__ = [
 ]
 
 __MNDO__ = "mndo"
-__MNDO__ = os.path.expanduser(__MNDO__)
 
 __PARAMETERS_OM2__ = {
     "H": {
@@ -258,7 +258,7 @@ def run_mndo_file(filename, cwd=None):
     return
 
 
-def calculate(filename, cwd=None):
+def calculate(filename, cwd=None, show_progress=False):
 
     calculations = run_mndo_file(filename, cwd=cwd)
 
@@ -266,10 +266,10 @@ def calculate(filename, cwd=None):
 
     for lines in calculations:
 
-        # try:
-        properties = get_properties(lines)
-        # except:
-        #     properties = None
+        try:
+            properties = get_properties(lines)
+        except:
+            properties = None
 
         properties_list.append(properties)
 
@@ -326,6 +326,14 @@ def get_properties(lines):
     #     properties["energy"] = np.nan
     #     return properties
 
+
+    # Check if input coordiantes is internal
+    # INPUT IN INTERNAL COORDINATES
+    # INPUT IN CARTESIAN COORDINATES
+    idx = get_index(lines, "INPUT IN")
+    line = lines[idx]
+    is_internal = "INTERNAL" in line
+
     keywords = [
         "CORE HAMILTONIAN MATR",
         "NUCLEAR ENERGY",
@@ -345,7 +353,7 @@ def get_properties(lines):
     line = line.split()
     value = line[1]
     e_scf = float(value)
-    properties["e_scf"] = e_scf
+    properties["e_scf"] = e_scf # ev
 
     # Nuclear energy
     idx = idx_keywords[1]
@@ -431,26 +439,58 @@ def get_properties(lines):
 
     # input coords
     # idx = get_rev_index(lines, "INPUT GEOMETRY")
-    idx = idx_keywords[3]
-    idx += 6
+
     atoms = []
     coord = []
-    j = idx
-    idx_atm = 1
-    idx_x = 2
-    idx_y = 3
-    idx_z = 4
-    # continue until we hit a blank line
-    while not lines[j].isspace() and lines[j].strip():
-        l = lines[j].split()
-        atoms.append(int(l[idx_atm]))
-        x = l[idx_x]
-        y = l[idx_y]
-        z = l[idx_z]
-        xyz = [x, y, z]
-        xyz = [float(c) for c in xyz]
-        coord.append(xyz)
-        j += 1
+
+    if is_internal:
+
+        idx_atm = 1
+        idx_x = 2
+        idx_y = 3
+        idx_z = 4
+
+        idx_coord = get_index(lines, "INITIAL CARTESIAN COORDINATES")
+        idx_coord += 5
+
+        j = idx_coord
+        # continue until we hit a blank line
+        while not lines[j].isspace() and lines[j].strip():
+            line = lines[j].split()
+
+            atom = line[idx_atm]
+            atom = int(atom)
+            x = float(line[idx_x])
+            y = float(line[idx_y])
+            z = float(line[idx_z])
+
+            atoms.append(atom)
+            coord.append([x,y,z])
+
+            j += 1
+
+    else:
+
+        idx_atm = 1
+        idx_x = 2
+        idx_y = 3
+        idx_z = 4
+
+        idx = idx_keywords[3]
+        idx += 6
+
+        j = idx
+        # continue until we hit a blank line
+        while not lines[j].isspace() and lines[j].strip():
+            l = lines[j].split()
+            atoms.append(int(l[idx_atm]))
+            x = l[idx_x]
+            y = l[idx_y]
+            z = l[idx_z]
+            xyz = [x, y, z]
+            xyz = [float(c) for c in xyz]
+            coord.append(xyz)
+            j += 1
 
     # calculate energy
     e_iso = [eisol[a] for a in atoms]
@@ -611,16 +651,63 @@ def get_input(atoms, coords, charge, title, header=__HEADER__):
     """
     """
 
+    # WARNING: INTERNAL COORDINATES ARE ASSUMED -
+    # FOR THREE-ATOM SYSTEMS
+
+
+    n_atoms = len(atoms)
+
     txt = header.format(charge, title)
     txt += "\n"
 
-    for atom, coord in zip(atoms, coords):
-        line = __ATOMLINE__.format(atom, *coord)
-        txt += line + "\n"
+    if n_atoms <= 3:
+        txt += internal_coordinates(atoms, coords)
+
+    else:
+
+        for atom, coord in zip(atoms, coords):
+            line = __ATOMLINE__.format(atom, *coord)
+            txt += line + "\n"
 
     txt += "\n"
 
     return txt
+
+
+def internal_coordinates(atomtypes, xyz, optimize=False):
+
+    natoms = len(atomtypes)
+
+    opt_flag = 0
+    if optimize: opt_flag = 1
+    output = ""
+
+    if (natoms == 3):
+
+        ba = xyz[1] - xyz[0]
+        bc = xyz[1] - xyz[2]
+        cosine_angle = np.dot(ba, bc) / (np.linalg.norm(ba) * np.linalg.norm(bc))
+        angle = np.arccos(cosine_angle) / np.pi * 180.0
+
+        norm_ba = np.linalg.norm(ba)
+        norm_bc = np.linalg.norm(bc)
+
+        output += f"{atomtypes[0]}\n"
+        output += f"{atomtypes[1]} {norm_ba} {opt_flag}\n"
+        output += f"{atomtypes[2]} {norm_bc} {opt_flag} {angle} {opt_flag}\n"
+
+    elif (natoms == 2):
+
+        ba = xyz[1] - xyz[0]
+        norm_ba = np.linalg.norm(ba)
+        output += f"{atomtypes[0]}\n"
+        output += f"{atomtypes[1]} {norm_ba} {opt_flag}\n"
+
+    elif (natoms == 1):
+
+        output += f"{atomtypes[0]}\n"
+
+    return output
 
 
 def get_default_params(method):

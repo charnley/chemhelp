@@ -12,8 +12,8 @@ import numpy as np
 import ase
 from ase.calculators.mopac import MOPAC as Mopac
 
-import cheminfo
-import misc
+from . import cheminfo
+from . import misc
 
 # NOTE
 # Should be possible to get graph of molecule using
