@@ -18,6 +18,7 @@ import rdkit.Chem.AllChem as AllChem
 import rdkit.Chem.Draw as Draw
 import rdkit.Chem.ChemicalForceFields as ChemicalForceFields
 import rdkit.Chem.rdMolDescriptors as rdMolDescriptors
+import rdkit.Chem.rdmolops as rdmolops
 
 # Chem.WrapLogs()
 
@@ -196,21 +197,21 @@ def molobj_to_coordinates(molobj):
     return coordinates
 
 
-def molobj_to_atoms(molobj, atom_type="int"):
+def molobj_to_atoms(molobj, atom_type=int):
 
     atoms = molobj.GetAtoms()
 
-    if atom_type == "str":
+    if atom_type == str or atom_type == "str":
         atoms = [atom.GetSymbol() for atom in atoms]
 
-    elif atom_type == "int":
+    elif atom_type == int or atom_type == "int":
         atoms = [atom.GetAtomicNum() for atom in atoms]
         atoms = np.array(atoms)
 
     return atoms
 
 
-def molobj_to_xyz(molobj, atom_type="int"):
+def molobj_to_xyz(molobj, atom_type=int):
     """
     rdkit molobj to xyz
     """
@@ -220,6 +221,20 @@ def molobj_to_xyz(molobj, atom_type="int"):
     coordinates = molobj_to_coordinates(molobj)
 
     return atoms, coordinates
+
+
+def molobj_to_axyzc(molobj, atom_type="int"):
+    """
+    rdkit molobj to atoms, xyz, charge
+    """
+
+    atoms = molobj_to_atoms(molobj, atom_type=atom_type)
+
+    coordinates = molobj_to_coordinates(molobj)
+
+    charge = rdmolops.GetFormalCharge(molobj)
+
+    return atoms, coordinates, charge
 
 
 def molobj_add_hydrogens(molobj):
@@ -464,7 +479,7 @@ def molobj_set_coordinates(molobj, coordinates):
     return
 
 
-def genereate_conformers(smilesstr, max_conf=20, min_conf=10, max_steps=1000):
+def generate_conformers(smilesstr, max_conf=20, min_conf=10, max_steps=1000):
 
     molobj = smiles_to_molobj(smilesstr, add_hydrogens=True)
 
@@ -509,7 +524,7 @@ def check_conformer_dist(molobj, cutoff=0.001):
     """
     For some atom_types in UFF, rdkit will fail optimization and stick multiple atoms ontop of eachother
 
-    especially in CS(F3)
+    Especially in CS(F3)
 
     """
 

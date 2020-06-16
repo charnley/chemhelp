@@ -1,5 +1,4 @@
 
-import rmsd
 import pandas as pd
 import numpy as np
 import multiprocessing as mp
@@ -65,9 +64,9 @@ __PARAMETERS_OM2__ = {
     },
 }
 
-__HEADER__ = """OM2 1SCF MULLIK PRECISE charge={:} iparok=1 jprint=5
+__HEADER__ = """OM3 1SCF MULLIK PRECISE charge={charge} jprint=5
 nextmol=-1
-TITLE {:}"""
+TITLE {title}"""
 
 __ATOMLINE__ = "{:2s} {:} 0 {:} 0 {:} 0"
 
@@ -641,13 +640,13 @@ def get_inputs(atoms_list, coords_list, charges, titles, header=__HEADER__):
 
     inptxt = ""
     for atoms, coords, charge, title in zip(atoms_list, coords_list, charges, titles):
-        txt = get_input(atoms, coords, charge, title, header=header)
+        txt = get_input(atoms, coords, charge, title=title, header=header)
         inptxt += txt
 
     return inptxt
 
 
-def get_input(atoms, coords, charge, title, header=__HEADER__):
+def get_input(atoms, coords, charge, title="", header=__HEADER__, read_params=True):
     """
     """
 
@@ -657,7 +656,13 @@ def get_input(atoms, coords, charge, title, header=__HEADER__):
 
     n_atoms = len(atoms)
 
-    txt = header.format(charge, title)
+    txt = header.format(charge=charge, title=title)
+
+    if read_params:
+        txt = txt.split("\n")
+        txt[0] += " iparok=1"
+        txt = "\n".join(txt)
+
     txt += "\n"
 
     if n_atoms <= 3:
