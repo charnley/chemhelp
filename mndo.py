@@ -12,7 +12,7 @@ import copy
 
 from . import units
 
-__IGNORE_PARAMS__ = [
+IGNORE_PARAMS = [
     'DD2',
     'DD3',
     'PO1',
@@ -30,9 +30,9 @@ __IGNORE_PARAMS__ = [
     'ZS',
 ]
 
-__MNDO__ = "mndo"
+MNDO_CMD = "mndo"
 
-__PARAMETERS_OM2__ = {
+PARAMETERS_OM2 = {
     "H": {
         "USS": -11.90627600,
         "ZS": 1.33196700,
@@ -64,11 +64,11 @@ __PARAMETERS_OM2__ = {
     },
 }
 
-__HEADER__ = """OM3 1SCF MULLIK PRECISE charge={charge} jprint=5
+DEFAULT_HEADER = """{method} 1SCF MULLIK PRECISE charge={charge} jprint=5
 nextmol=-1
 TITLE {title}"""
 
-__ATOMLINE__ = "{:2s} {:} 0 {:} 0 {:} 0"
+ATOMLINE = "{:2s} {:} 0 {:} 0 {:} 0"
 
 __DEBUG__ = "jprint=7"
 
@@ -234,12 +234,11 @@ def execute(cmd, cwd=None):
         raise subprocess.CalledProcessError(return_code, cmd)
 
 
-def run_mndo_file(filename, cwd=None):
+def run_mndo_file(filename, cwd=None, mndo_cmd=MNDO_CMD):
 
-    cmd = __MNDO__
-    cmd += " < " + filename
+    runcmd = f"{mndo_cmd} < {filename}"
 
-    lines = execute(cmd, cwd=cwd)
+    lines = execute(runcmd, cwd=cwd)
 
     molecule_lines = []
 
@@ -257,9 +256,9 @@ def run_mndo_file(filename, cwd=None):
     return
 
 
-def calculate(filename, cwd=None, show_progress=False):
+def calculate(filename, **kwargs):
 
-    calculations = run_mndo_file(filename, cwd=cwd)
+    calculations = run_mndo_file(filename, **kwargs)
 
     properties_list = []
 
@@ -602,7 +601,7 @@ def set_params(parameters, cwd=None):
     return
 
 
-def load_params(filename, ignore_keys=__IGNORE_PARAMS__):
+def load_params(filename, ignore_keys=IGNORE_PARAMS):
 
     with open(filename, 'r') as f:
         params = f.read()
@@ -616,7 +615,7 @@ def load_params(filename, ignore_keys=__IGNORE_PARAMS__):
     return params
 
 
-def dump_params(parameters, ignore_keys=__IGNORE_PARAMS__):
+def dump_params(parameters, ignore_keys=IGNORE_PARAMS):
     """
     """
 
@@ -634,19 +633,24 @@ def dump_params(parameters, ignore_keys=__IGNORE_PARAMS__):
     return txt
 
 
-def get_inputs(atoms_list, coords_list, charges, titles, header=__HEADER__):
+def get_inputs(atoms_list, coords_list, charges, titles, **kwargs):
     """
     """
 
     inptxt = ""
     for atoms, coords, charge, title in zip(atoms_list, coords_list, charges, titles):
-        txt = get_input(atoms, coords, charge, title=title, header=header)
+        txt = get_input(atoms, coords, charge, title=title, **kwargs)
         inptxt += txt
 
     return inptxt
 
 
-def get_input(atoms, coords, charge, title="", header=__HEADER__, read_params=True):
+def get_input(atoms, coords, charge,
+    title="",
+    method="PM3",
+    header=DEFAULT_HEADER,
+    read_params=True,
+    **kwargs):
     """
     """
 
@@ -656,7 +660,7 @@ def get_input(atoms, coords, charge, title="", header=__HEADER__, read_params=Tr
 
     n_atoms = len(atoms)
 
-    txt = header.format(charge=charge, title=title)
+    txt = header.format(method=method, charge=charge, title=title)
 
     if read_params:
         txt = txt.split("\n")
@@ -666,12 +670,12 @@ def get_input(atoms, coords, charge, title="", header=__HEADER__, read_params=Tr
     txt += "\n"
 
     if n_atoms <= 3:
-        txt += internal_coordinates(atoms, coords)
+        txt += internal_coordinates(atoms, coords, **kwargs)
 
     else:
 
         for atom, coord in zip(atoms, coords):
-            line = __ATOMLINE__.format(atom, *coord)
+            line = ATOMLINE.format(atom, *coord)
             txt += line + "\n"
 
     txt += "\n"
@@ -802,6 +806,23 @@ def dump_default_parameters():
         filename = "parameters.{:}.json".format(method.lower())
         with open(filename, 'w') as f:
             json.dump(parameters, f, indent=4)
+
+    return
+
+
+def write_input_file(
+    atoms_list,
+    coords_list,
+    charges,
+    titles,
+    method,
+    filename,
+    **kwargs):
+
+    txt = get_inputs(atoms_list, coords_list, charges, titles, method=method)
+
+    with open(filename, "w") as f:
+        f.write(txt)
 
     return
 
