@@ -1,4 +1,5 @@
 
+from pathlib import Path
 import pandas as pd
 import numpy as np
 import multiprocessing as mp
@@ -11,6 +12,7 @@ import shutil
 import copy
 
 from . import units
+from . import misc
 
 IGNORE_PARAMS = [
     'DD2',
@@ -87,23 +89,6 @@ __ATOMS__ = [x.strip() for x in [
     'fr', 'ra', 'ac', 'th', 'pa', 'u ', 'np', 'pu']]
 
 
-def get_pinfo():
-    """
-    get process id of parent and current process
-    """
-    ppid = os.getppid()
-    pid = os.getpid()
-    return ppid, ppid
-
-
-def fix_dir_name(name):
-
-    if not name.endswith("/"):
-        name += "/"
-
-    return name
-
-
 def convert_atom(atom, t=None):
     """
 
@@ -125,99 +110,10 @@ def convert_atom(atom, t=None):
         return atom
 
 
-def get_indexes(lines, pattern):
+def execute(cmd, scr=None):
 
-    idxs = []
-
-    for i, line in enumerate(lines):
-        if pattern in line:
-            idxs.append(i)
-
-    return idxs
-
-
-def get_indexes_with_stop(lines, pattern, stoppattern):
-
-    idxs = []
-
-    for i, line in enumerate(lines):
-        # if line.find(pattern) != -1:
-        if pattern in line:
-            idxs.append(i)
-            continue
-
-        # if line.find(stoppattern) != -1:
-        if stoppattern in line:
-            break
-
-    return idxs
-
-
-def get_index(lines, pattern):
-    for i, line in enumerate(lines):
-        if line.find(pattern) != -1:
-            return i
-    return None
-
-
-def reverse_enum(L):
-    for index in reversed(range(len(L))):
-        yield index, L[index]
-
-
-def get_indexes_patterns(lines, patterns):
-
-    n_patterns = len(patterns)
-    i_patterns = list(range(n_patterns))
-
-    idxs = [None]*n_patterns
-
-    for i, line in enumerate(lines):
-
-        for ip in i_patterns:
-
-            pattern = patterns[ip]
-
-            if pattern in line:
-                idxs[ip] = i
-                i_patterns.remove(ip)
-
-    return idxs
-
-
-def get_rev_indexes(lines, patterns):
-
-    n_patterns = len(patterns)
-    i_patterns = list(range(n_patterns))
-
-    idxs = [None]*n_patterns
-
-    for i, line in reverse_enum(lines):
-
-        for ip in i_patterns:
-
-            pattern = patterns[ip]
-
-            if pattern in line:
-                idxs[ip] = i
-                i_patterns.remove(ip)
-
-    return idxs
-
-
-def get_rev_index(lines, pattern):
-
-    for i, line in reverse_enum(lines):
-        if line.find(pattern) != -1:
-            return i
-
-    return None
-
-
-def execute(cmd, cwd=None):
-
-    if cwd is not None:
-        cmd = f"cd {cwd}; " + cmd
+    if scr is not None:
+        cmd = f"cd {scr}; " + cmd
 
     popen = subprocess.Popen(cmd,
         stdout=subprocess.PIPE,
@@ -234,11 +130,11 @@ def execute(cmd, cwd=None):
         raise subprocess.CalledProcessError(return_code, cmd)
 
 
-def run_mndo_file(filename, cwd=None, mndo_cmd=MNDO_CMD):
+def run_mndo_file(filename, scr=None, mndo_cmd=MNDO_CMD):
 
     runcmd = f"{mndo_cmd} < {filename}"
 
-    lines = execute(runcmd, cwd=cwd)
+    lines = execute(runcmd, scr=scr)
 
     molecule_lines = []
 
@@ -256,7 +152,23 @@ def run_mndo_file(filename, cwd=None, mndo_cmd=MNDO_CMD):
     return
 
 
+def calculate_file(filename, **kwargs):
+
+    calculations = run_mndo_file(filename, **kwargs)
+
+    return calculations
+
+
 def calculate(filename, **kwargs):
+    """
+
+    DEPRECATIED
+
+    TODO rewrite calculate interface
+
+    
+
+    """
 
     calculations = run_mndo_file(filename, **kwargs)
 
@@ -273,31 +185,6 @@ def calculate(filename, **kwargs):
 
     return properties_list
 
-
-def worker(*args, **kwargs):
-
-    scr = kwargs["scr"]
-    filename = kwargs["filename"]
-    params = args[0]
-
-    # Ensure unique directory
-    scr = fix_dir_name(scr)
-    pid = os.getpid()
-    cwd = f"{scr}{pid}/"
-
-    if not os.path.exists(cwd):
-        os.mkdir(cwd)
-
-    if not os.path.exists(cwd + filename):
-        shutil.copy2(scr + filename, cwd + filename)
-
-    # Set params in worker dir
-    set_params(params, cwd=cwd)
-
-    # Calculate properties
-    properties_list = calculate(filename, cwd=cwd)
-
-    return properties_list
 
 
 def get_properties(lines):
@@ -328,7 +215,7 @@ def get_properties(lines):
     # Check if input coordiantes is internal
     # INPUT IN INTERNAL COORDINATES
     # INPUT IN CARTESIAN COORDINATES
-    idx = get_index(lines, "INPUT IN")
+    idx = misc.get_index(lines, "INPUT IN")
     line = lines[idx]
     is_internal = "INTERNAL" in line
 
@@ -338,7 +225,7 @@ def get_properties(lines):
         "IONIZATION ENERGY",
         "INPUT GEOMETRY"]
 
-    idx_keywords = get_rev_indexes(lines, keywords)
+    idx_keywords = misc.get_rev_indexes(lines, keywords)
 
     # SCF energy
     idx = idx_keywords[0]
@@ -364,7 +251,7 @@ def get_properties(lines):
 
     # eisol
     eisol = dict()
-    idxs = get_indexes_with_stop(lines, "EISOL", "IDENTIFICATION")
+    idxs = misc.get_indexes_with_stop(lines, "EISOL", "IDENTIFICATION")
     for idx in idxs:
         line = lines[idx]
         line = line.split()
@@ -448,7 +335,7 @@ def get_properties(lines):
         idx_y = 3
         idx_z = 4
 
-        idx_coord = get_index(lines, "INITIAL CARTESIAN COORDINATES")
+        idx_coord = misc.get_index(lines, "INITIAL CARTESIAN COORDINATES")
         idx_coord += 5
 
         j = idx_coord
@@ -500,38 +387,65 @@ def get_properties(lines):
     return properties
 
 
-def calculate_multi_params(
-    inputstr,
-    params_list,
+def param_worker(*args, **kwargs):
+
+    scr = kwargs["scr"]
+    filename = kwargs["filename"]
+    params = args[0]
+
+    # Find subfolder
+    current = mp.current_process()
+    pid = current.name
+    pid, = current._identity
+    pid = str(pid)
+    scr = os.path.join(scr, pid)
+
+    # Set params in worker dir
+    set_params(params, scr=scr)
+
+    # Calculate properties
+    properties_list = calculate(filename, scr=scr)
+
+    return properties_list
+
+
+def calculate_parameters(
+    filename,
+    parameters_list,
     scr=None,
     n_procs=1):
     """
-
-    """
-
-    scr = "_tmp_mndo_/"
-    if not os.path.exists(scr):
-        os.mkdir(scr)
-
-    filename = "_tmp_inputstr_"
-    with open(scr + filename, 'w') as f:
-        f.write(inputstr)
 
     # TODO Create uuid folders in scr
     # TODO Change dir for each thread
     # TODO Stream results for each thread
 
     # TODO Collect properties, same order
+    """
+
+    if scr is None:
+        scr = "./"
+
+    Path(scr).mkdir(parents=True, exist_ok=True)
+
+    proc_dirs = range(1, n_procs+1)
+    proc_dirs = list(proc_dirs)
+    proc_dirs = [os.path.join(scr, str(d)) for d in proc_dirs]
+
+    # Prepare scrdirs with input
+    for d in proc_dirs:
+        Path(d).mkdir(parents=True, exist_ok=True)
+        shutil.copy2(os.path.join(scr, filename), os.path.join(d, filename))
 
     kwargs = {
         "scr": scr,
         "filename": filename,
     }
 
-    mapfunc = functools.partial(worker, **kwargs)
+    mapfunc = functools.partial(param_worker, **kwargs)
 
     p = mp.Pool(n_procs)
-    results = p.map(mapfunc, params_list)
+    results = p.map(mapfunc, parameters_list)
 
     return results
 
@@ -583,7 +497,7 @@ def numerical_jacobian(inputstr, params, dh=10**-5, n_procs=2):
     return param_grad
 
 
-def set_params(parameters, cwd=None):
+def set_params(parameters, scr=None):
     """
     """
 
@@ -591,9 +505,8 @@ def set_params(parameters, cwd=None):
 
     filename = "fort.14"
 
-    if cwd is not None:
-        cwd = fix_dir_name(cwd)
-        filename = cwd + filename
+    if scr is not None:
+        filename = os.path.join(scr, filename)
 
     with open(filename, 'w') as f:
         f.write(txt)
@@ -618,8 +531,6 @@ def load_params(filename, ignore_keys=IGNORE_PARAMS):
 def dump_params(parameters, ignore_keys=IGNORE_PARAMS):
     """
     """
-
-    # TODO andersx has some if-statements in his writer
 
     txt = ""
 
@@ -656,7 +567,6 @@ def get_input(atoms, coords, charge,
 
     # WARNING: INTERNAL COORDINATES ARE ASSUMED -
     # FOR THREE-ATOM SYSTEMS
-
 
     n_atoms = len(atoms)
 
@@ -724,6 +634,8 @@ def get_default_params(method):
 
     Get the default parameters of a method
 
+    # TODO Extend the atom types
+
     """
 
     atoms = [x.strip().upper() for x in [
@@ -749,7 +661,7 @@ def get_default_params(method):
 
     lines = next(molecules)
 
-    idx = get_index(lines, "PARAMETER VALUES USED IN THE CALCULATION")
+    idx = misc.get_index(lines, "PARAMETER VALUES USED IN THE CALCULATION")
     idx += 4
 
     parameters = {}
@@ -793,12 +705,12 @@ def get_default_params(method):
 
 def dump_default_parameters():
     """
+    Dump mndo.exe method parameters (json format) on disk
 
-    helper func
+    Will be stored as parameters.method_name.json.
 
     """
 
-    # dump parameters
     methods = ["MNDO", "AM1", "PM3", "OM2"]
 
     for method in methods:
@@ -819,7 +731,7 @@ def write_input_file(
     filename,
     **kwargs):
 
-    txt = get_inputs(atoms_list, coords_list, charges, titles, method=method)
+    txt = get_inputs(atoms_list, coords_list, charges, titles, method=method, **kwargs)
 
     with open(filename, "w") as f:
         f.write(txt)
@@ -870,7 +782,7 @@ def main():
 
 
 if __name__ == '__main__':
-
+    # Chemhelp
     main()
 
 

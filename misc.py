@@ -31,6 +31,15 @@ def save_array(arr):
     return s.getvalue()
 
 
+def fix_dir_name(name):
+
+    if not name.endswith("/"):
+        name += "/"
+
+    return name
+
+
+# search
 
 def readlines_reverse(filename):
     with open(filename) as qfile:
@@ -99,6 +108,96 @@ def get_rev_index(lines, pattern, max_lines=None, lenl=None, stoppattern=False):
             return None
 
     return None
+
+
+def get_indexes(lines, pattern):
+
+    idxs = []
+
+    for i, line in enumerate(lines):
+        if pattern in line:
+            idxs.append(i)
+
+    return idxs
+
+
+def get_indexes_with_stop(lines, pattern, stoppattern):
+
+    idxs = []
+
+    for i, line in enumerate(lines):
+        # if line.find(pattern) != -1:
+        if pattern in line:
+            idxs.append(i)
+            continue
+
+        # if line.find(stoppattern) != -1:
+        if stoppattern in line:
+            break
+
+    return idxs
+
+
+def get_index(lines, pattern):
+    for i, line in enumerate(lines):
+        if line.find(pattern) != -1:
+            return i
+    return None
+
+
+def reverse_enum(L):
+    for index in reversed(range(len(L))):
+        yield index, L[index]
+
+
+def get_indexes_patterns(lines, patterns):
+
+    n_patterns = len(patterns)
+    i_patterns = list(range(n_patterns))
+
+    idxs = [None]*n_patterns
+
+    for i, line in enumerate(lines):
+
+        for ip in i_patterns:
+
+            pattern = patterns[ip]
+
+            if pattern in line:
+                idxs[ip] = i
+                i_patterns.remove(ip)
+
+    return idxs
+
+
+def get_rev_indexes(lines, patterns):
+
+    n_patterns = len(patterns)
+    i_patterns = list(range(n_patterns))
+
+    idxs = [None]*n_patterns
+
+    for i, line in reverse_enum(lines):
+
+        for ip in i_patterns:
+
+            pattern = patterns[ip]
+
+            if pattern in line:
+                idxs[ip] = i
+                i_patterns.remove(ip)
+
+    return idxs
+
+
+def get_rev_index(lines, pattern):
+
+    for i, line in reverse_enum(lines):
+        if line.find(pattern) != -1:
+            return i
+
+    return None
+
 
 
 def shell(cmd, shell=False):
