@@ -152,33 +152,57 @@ def run_mndo_file(filename, scr=None, mndo_cmd=MNDO_CMD):
     return
 
 
-def calculate_file(filename, **kwargs):
-
-    calculations = run_mndo_file(filename, **kwargs)
-
-    return calculations
-
-
-def calculate(filename, **kwargs):
+def calculate_file(filename,
+    return_properties=True,
+    **kwargs):
     """
 
-    DEPRECATIED
+    Run MNDO.exe on filename and return iterator of results.
 
-    TODO rewrite calculate interface
+    if return_properties is set, return Iterator[Dict] with properties
+    else returns Iterator[List[Str]] of output
 
-    
-
+    :param filename: 
+    :param return_properties: boolean
+    :return results: Iterator
     """
 
     calculations = run_mndo_file(filename, **kwargs)
 
-    properties_list = []
+    if not return_properties:
+
+        if return_list:
+            calculations = list(calculations)
+
+        return calculations
 
     for lines in calculations:
         properties = get_properties(lines)
-        properties_list.append(properties)
+        yield properties
 
-    return properties_list
+    return
+
+
+# def calculate(filename, **kwargs):
+#     """
+#
+#     DEPRECATIED
+#
+#     TODO rewrite calculate interface
+#
+#     
+#
+#     """
+#
+#     calculations = run_mndo_file(filename, **kwargs)
+#
+#     properties_list = []
+#
+#     for lines in calculations:
+#         properties = get_properties(lines)
+#         properties_list.append(properties)
+#
+#     return properties_list
 
 
 
@@ -228,7 +252,7 @@ def get_properties_1scf(lines):
     is_internal = "INTERNAL" in line
 
     keywords = [
-        "CORE HAMILTONIAN MATR",
+        "CORE HAMILTONIAN MATRIX.",
         "NUCLEAR ENERGY",
         "IONIZATION ENERGY",
         "INPUT GEOMETRY"]
@@ -236,11 +260,12 @@ def get_properties_1scf(lines):
     idx_keywords = misc.get_rev_indexes(lines, keywords)
 
     # SCF energy
-    if idx_keywords[0] is None:
+    idx_core = idx_keywords[0]
+    if idx_core is None:
         e_scf = float("nan")
         properties["e_scf"] = e_scf
     else:
-        idx = idx_keywords[0]
+        idx = idx_core
         idx -= 9
         line = lines[idx]
 
@@ -248,9 +273,14 @@ def get_properties_1scf(lines):
             idx -= 2
             line = lines[idx]
 
+        # NOTE This should never happen, but better safe than sorry
         line = line.split()
-        value = line[1]
-        e_scf = float(value)
+        if len(line) < 2:
+            e_scf = float("nan")
+        else:
+            value = line[1]
+            e_scf = float(value)
+
         properties["e_scf"] = e_scf # ev
 
     # Nuclear energy
@@ -412,6 +442,19 @@ def get_properties_optimize():
 
 def get_properties_gradient():
 
+
+    return
+
+
+def _dump_lines(filename, lines):
+    """
+    """
+
+    if type(lines) == list:
+        lines = "\n".join(lines)
+
+    with open(filename, 'w') as f:
+        f.write(lines)
 
     return
 
