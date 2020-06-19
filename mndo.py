@@ -175,12 +175,7 @@ def calculate(filename, **kwargs):
     properties_list = []
 
     for lines in calculations:
-
-        try:
-            properties = get_properties(lines)
-        except:
-            properties = None
-
+        properties = get_properties(lines)
         properties_list.append(properties)
 
     return properties_list
@@ -200,10 +195,14 @@ def get_properties(lines):
 
     """
 
+    # TODO Check on input type of calculation
+
     # TODO UNABLE TO ACHIEVE SCF CONVERGENCE
     # TODO optimization failed
 
-    properties = {}
+    # TODO Return NaN if idx is not found
+
+    # TODO Check CORE HAMILTONIAN MATR if not converged?
 
     # check for error
     # idx = get_index(lines, "UNABLE TO ACHIEVE SCF CONVERGENCE")
@@ -211,6 +210,15 @@ def get_properties(lines):
     #     properties["energy"] = np.nan
     #     return properties
 
+
+    properties = get_properties_1scf(lines)
+
+    return properties
+
+
+def get_properties_1scf(lines):
+
+    properties = {}
 
     # Check if input coordiantes is internal
     # INPUT IN INTERNAL COORDINATES
@@ -228,26 +236,34 @@ def get_properties(lines):
     idx_keywords = misc.get_rev_indexes(lines, keywords)
 
     # SCF energy
-    idx = idx_keywords[0]
-    idx -= 9
-    line = lines[idx]
-    if "SCF CONVERGENCE HAS BEE" in line:
-        idx -= 2
+    if idx_keywords[0] is None:
+        e_scf = float("nan")
+        properties["e_scf"] = e_scf
+    else:
+        idx = idx_keywords[0]
+        idx -= 9
         line = lines[idx]
 
-    line = line.split()
-    value = line[1]
-    e_scf = float(value)
-    properties["e_scf"] = e_scf # ev
+        if "SCF CONVERGENCE HAS BEE" in line:
+            idx -= 2
+            line = lines[idx]
+
+        line = line.split()
+        value = line[1]
+        e_scf = float(value)
+        properties["e_scf"] = e_scf # ev
 
     # Nuclear energy
-    idx = idx_keywords[1]
-    line = lines[idx]
-    line = line.split()
-    value = line[2]
-    e_nuc = float(value)
-    properties["e_nuc"] = e_nuc # ev
-
+    if idx_keywords[1] is None:
+        e_nuc = float("nan")
+        properties["e_nuc"] = e_nuc
+    else:
+        idx = idx_keywords[1]
+        line = lines[idx]
+        line = line.split()
+        value = line[2]
+        e_nuc = float(value)
+        properties["e_nuc"] = e_nuc # ev
 
     # eisol
     eisol = dict()
@@ -258,7 +274,6 @@ def get_properties(lines):
         atom = int(line[0])
         value = line[2]
         eisol[atom] = float(value) # ev
-
 
     # # Enthalpy of formation
     # idx_hof = get_index(lines, "SCF HEAT OF FORMATION")
@@ -273,10 +288,14 @@ def get_properties(lines):
     # ionization
     # idx = get_rev_index(lines, "IONIZATION ENERGY")
     idx = idx_keywords[2]
-    line = lines[idx]
-    value = line.split()[-2]
-    e_ion = float(value) # ev
-    properties["e_ion"] = e_ion
+    if idx is None:
+        e_ion = float("nan")
+        properties["e_ion"] = e_ion
+    else:
+        line = lines[idx]
+        value = line.split()[-2]
+        e_ion = float(value) # ev
+        properties["e_ion"] = e_ion
 
     # # Dipole
     # idx = get_rev_index(lines, "PRINCIPAL AXIS")
@@ -286,44 +305,7 @@ def get_properties(lines):
     # value = float(value) # Debye
     # properties["mu"] = value
 
-    # # optimized coordinates
-    # i = get_rev_index(lines, 'CARTESIAN COORDINATES')
-    # idx_atm = 1
-    # idx_x = 2
-    # idx_y = 3
-    # idx_z = 4
-    # n_skip = 4
-    #
-    # if i < idx_hof:
-    #     i = get_rev_index(lines, 'X-COORDINATE')
-    #     idx_atm = 1
-    #     idx_x = 2
-    #     idx_y = 4
-    #     idx_z = 6
-    #     n_skip = 3
-    #
-    # j = i + n_skip
-    # symbols = []
-    # coord = []
-    #
-    # # continue until we hit a blank line
-    # while not lines[j].isspace() and lines[j].strip():
-    #     l = lines[j].split()
-    #     symbols.append(int(l[idx_atm]))
-    #     x = l[idx_x]
-    #     y = l[idx_y]
-    #     z = l[idx_z]
-    #     xyz = [x, y, z]
-    #     xyz = [float(c) for c in xyz]
-    #     coord.append(xyz)
-    #     j += 1
-    #
-    # coord = np.array(coord)
-    # properties["coord"] = coord
-    # properties["atoms"] = symbols
-
     # input coords
-    # idx = get_rev_index(lines, "INPUT GEOMETRY")
 
     atoms = []
     coord = []
@@ -385,6 +367,53 @@ def get_properties(lines):
     properties["energy"] = energy
 
     return properties
+
+
+def get_properties_optimize():
+
+    # # optimized coordinates
+    # i = get_rev_index(lines, 'CARTESIAN COORDINATES')
+    # idx_atm = 1
+    # idx_x = 2
+    # idx_y = 3
+    # idx_z = 4
+    # n_skip = 4
+    #
+    # if i < idx_hof:
+    #     i = get_rev_index(lines, 'X-COORDINATE')
+    #     idx_atm = 1
+    #     idx_x = 2
+    #     idx_y = 4
+    #     idx_z = 6
+    #     n_skip = 3
+    #
+    # j = i + n_skip
+    # symbols = []
+    # coord = []
+    #
+    # # continue until we hit a blank line
+    # while not lines[j].isspace() and lines[j].strip():
+    #     l = lines[j].split()
+    #     symbols.append(int(l[idx_atm]))
+    #     x = l[idx_x]
+    #     y = l[idx_y]
+    #     z = l[idx_z]
+    #     xyz = [x, y, z]
+    #     xyz = [float(c) for c in xyz]
+    #     coord.append(xyz)
+    #     j += 1
+    #
+    # coord = np.array(coord)
+    # properties["coord"] = coord
+    # properties["atoms"] = symbols
+
+
+    return
+
+def get_properties_gradient():
+
+
+    return
 
 
 def param_worker(*args, **kwargs):
@@ -497,11 +526,11 @@ def numerical_jacobian(inputstr, params, dh=10**-5, n_procs=2):
     return param_grad
 
 
-def set_params(parameters, scr=None):
+def set_params(parameters, scr=None, **kwargs):
     """
     """
 
-    txt = dump_params(parameters)
+    txt = dump_params(parameters, **kwargs)
 
     filename = "fort.14"
 
