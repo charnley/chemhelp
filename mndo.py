@@ -306,14 +306,14 @@ def get_properties_1scf(lines):
         eisol[atom] = float(value) # ev
 
     # # Enthalpy of formation
-    # idx_hof = get_index(lines, "SCF HEAT OF FORMATION")
-    # line = lines[idx_hof]
-    # line = line.split("FORMATION")
-    # line = line[1]
-    # line = line.split()
-    # value = line[0]
-    # value = float(value)
-    # properties["h"] = value # kcal/mol
+    idx_hof = misc.get_index(lines, "SCF HEAT OF FORMATION")
+    line = lines[idx_hof]
+    line = line.split("FORMATION")
+    line = line[1]
+    line = line.split()
+    value = line[0]
+    value = float(value)
+    properties["h"] = value # kcal/mol
 
     # ionization
     # idx = get_rev_index(lines, "IONIZATION ENERGY")
