@@ -307,13 +307,16 @@ def get_properties_1scf(lines):
 
     # # Enthalpy of formation
     idx_hof = misc.get_index(lines, "SCF HEAT OF FORMATION")
-    line = lines[idx_hof]
-    line = line.split("FORMATION")
-    line = line[1]
-    line = line.split()
-    value = line[0]
-    value = float(value)
-    properties["h"] = value # kcal/mol
+    if idx_hof is None:
+        properties["h"] = float("nan")
+    else:
+        line = lines[idx_hof]
+        line = line.split("FORMATION")
+        line = line[1]
+        line = line.split()
+        value = line[0]
+        value = float(value)
+        properties["h"] = value # kcal/mol
 
     # ionization
     # idx = get_rev_index(lines, "IONIZATION ENERGY")
